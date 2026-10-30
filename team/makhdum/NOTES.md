@@ -209,3 +209,56 @@ file changes this rehearsal.
 - `python demo/rehearse.py` — 12/12 beats, 5.8 s, exit 0. `--break-rule SAVE-ANALYST` — exit 1, beat 2.
 - `pytest` — **204 passed, 1 xfailed** (the xfail is LF-2 from task 2, kept strict). 11 of those are
   new rehearsal tests; no existing test was edited, skipped or weakened.
+
+---
+
+# Task 4 — Aryan's lane (built at the finder's request) and MVP hardening
+
+`lane/aryan` was byte-identical to `main` with the submission packaging unbuilt, so it was the last
+thing on the critical path. All four of Aryan's files are **new**, so they were built on `lane/makhdum`
+without touching anyone's file, and `lane/aryan` can be fast-forwarded to these commits if he wants the
+history on his branch.
+
+- `agentgate/export.py` + `tests/test_export.py` (12 tests) — `python -m agentgate.export <db> <out>`
+  writes `audit.csv`, `audit.json`, `outbox.csv`, `summary.json`, prints one line, creates the directory.
+  Redaction runs before writing over `sk-`, `ghp_`, `Bearer …`, bare `eyJ…` JWTs and 32+ hex runs; the
+  count lands in `summary.json`. The 32-hex floor keeps the 16-character rulebook fingerprint readable —
+  it is evidence, not a secret.
+- `docs/SUBMISSION.md` — one page: the six commands to run before packaging, what goes in the archive,
+  what never does, the `agent-trace/PS08/<harness>/` layout, the redaction rule, and the known limits.
+- `team/aryan/NOTES.md` — findings and verification for that lane.
+
+## Hardening landed with it
+
+- `.github/workflows/ci.yml` — runs pytest, the scenario table, the six mutations, the red team and the
+  stage rehearsal on every push. The evidence was only ever checked on one machine.
+- `tests/test_text_blindness.py` (6 tests) — parses `policy.py` and `labels.py` and asserts they never
+  reach `.body`, never import `tools`/`store`/`gateway`, and that the one legitimate body copy in
+  `gateway.declassify` is the only place a body is named. The positive control points the same scanner at
+  `tools.py` and requires it to find the read there, so the check cannot pass by being blind.
+- **Three published numbers were wrong and are now right:** `README.md` said 42 tests (223),
+  `team/README.md` said the baseline was 34, and `docs/DEMO_SCRIPT.md` quoted tightened
+  `c0a7b0e1860531db` which the app has never rendered (now `b76a1526a887e3d2`). That last one closes
+  LF-3, and the rehearsal's beat 0 went from `warn` to `yes` on the next run.
+- `docs/RUN.md` — a one-command-per-claim table, including `python -m redteam`, `python demo/rehearse.py`
+  and the export, none of which were documented anywhere a judge would look.
+- `.gitignore` — `.coverage`, `htmlcov/`.
+
+## Requests (task 4)
+
+- **Tanush — decision needed:** `app.py` does not expose the proposer or the export. Both are reachable
+  from the CLI only. If the judged demo should include them, that is a dashboard change and his file; the
+  alternative is naming them in `README`/`JUDGE_QA` as library features. They are now documented in
+  `docs/PROPOSER.md`, `docs/RUN.md` and `docs/SUBMISSION.md`, which is the least that was missing.
+- **Tanush — `agentgate/store.py` / `workflow.py`:** still the two workarounds recorded in
+  `team/tanush/REQUESTS.md` (single-run `Store`, non-appending `add_steps`). Not touched here.
+- **Aryan:** the export lane is ready to adopt on `lane/aryan` by fast-forward.
+
+## Ready to merge (task 4)
+
+- Code commit `20b433a` (export + tests), docs `7a74fd1` (submission + lane notes), hardening
+  `138cd5f` (CI, structural tests, corrected numbers), then the notes/log commit.
+- `pytest` — **222 passed, 1 xfailed**; 18 of those tests are new here (12 export, 6 structural).
+- `python -m agentgate.export` on a seeded database — one line, four files, exit 0.
+- `python demo/rehearse.py` — 12/12 beats, 6.2 s, exit 0, beat 0 now `yes`.
+- `python -m benchmark.runner` 32/32, `benchmark.mutations` 6/6, `python -m redteam` 21/22 held.

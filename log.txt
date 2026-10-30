@@ -786,3 +786,39 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+
+## [2026-10-30T22:49:05+05:30] Aryan's lane built, submission packaged, CI and structural claims added
+
+User Prompt (verbatim, secrets redacted):
+"start doing aryan's task and start completing his all task ,do keep in mind to tweek and improve the
+projheect's where required even if not asked so that our project can be MVP"
+
+Agent Response Summary:
+lane/aryan was identical to main with zero commits and the submission packaging unbuilt, so I read the
+brief and built all four of his files as new files on lane/makhdum, leaving every existing file of his and
+everyone else's untouched. agentgate/export.py writes audit.csv, audit.json, outbox.csv and summary.json,
+prints one line, creates the directory, and redacts sk-, ghp_, Bearer, bare JWT and 32+ hex runs before
+writing while counting replacements; the 32-character floor deliberately keeps the 16-character rulebook
+fingerprint readable because that column is evidence. Twelve tests cover columns, counts, redaction,
+directory creation, the CLI and a positive control that ordinary text is untouched. Wrote the one-page
+docs/SUBMISSION.md and team/aryan/NOTES.md. Then the MVP hardening the audit called for: a GitHub Actions
+workflow that runs the suite, the scenario table, the six mutations, the red team and the stage rehearsal
+on every push; a structural test that parses policy.py and labels.py and proves they never reach .body and
+never import the tools, with a positive control pointing the same scanner at tools.py; and the three
+stale published numbers, including the tightened fingerprint the demo script never rendered, which flipped
+the rehearsal's beat 0 from warn to yes. Suite 222 passed 1 xfailed, benchmark 32/32, mutations 6/6,
+red team 21/22, rehearsal 12/12 in 6.2 s, export CLI verified against a seeded database.
+
+Actions:
+* Created agentgate/export.py, tests/test_export.py, docs/SUBMISSION.md, team/aryan/NOTES.md
+* Created .github/workflows/ci.yml and tests/test_text_blindness.py
+* Corrected README.md, team/README.md, docs/DEMO_SCRIPT.md, docs/RUN.md, .gitignore
+* Committed 20b433a, 7a74fd1, 138cd5f on lane/makhdum
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none
