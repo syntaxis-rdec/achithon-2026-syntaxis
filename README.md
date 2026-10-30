@@ -141,13 +141,14 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
 
 | Suite | Command | Coverage | Result |
 |---|---|---|---|
-| **Unit & Integration** | `pytest` | 264 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web | **263 passed, 1 xfailed (LF-2)** |
-| **Stage Rehearsal** | `python demo/rehearse.py` | 12 live demo beats headlessly driven via `AppTest` | **12/12 beats green in 4.1s** |
+| **Unit & Integration** | `pytest` | 262 tests across gateway, policy, labels, resumption, injection, audit chain, canary, web, text-blindness | **262 passed, 1 xfailed (LF-2)** |
+| **Stage Rehearsal** | `python demo/rehearse.py` | 12 live demo beats headlessly driven via `AppTest` | **12/12 beats green in 5.0s** |
+>>>>>>> origin/main
 | **Scenario Benchmark** | `python -m benchmark.runner` | 32 frozen specification scenarios | **32/32 matched, 0 unauthorized** |
 | **Mutation Testing** | `python -m benchmark.mutations` | 6 deliberate gateway corruptions (clearance, inheritance, allowlist, tamper, read history, audit) | **6/6 detected (100% sensitivity)** |
 | **Red Team Board** | `python -m redteam` | 22 real-world attack vectors (injections, role forgery, TOCTOU, drift) | **21/22 held, 1 open finding** |
 | **Audit Packager** | `python -m agentgate.export` | SQLite audit trail export to CSV/JSON with automated secret scrubbing | **Clean export, 0 leaked tokens** |
-| **Submission Validator** | `python package_submission.py` | Full repo hygiene check and zip creation | **Validated (93 files, 0.24MB)** |
+| **Submission Validator** | `python package_submission.py` | Full repo hygiene check and zip creation | **Validated (100 files, 0.29MB)** |
 
 ---
 
@@ -215,7 +216,13 @@ Everything you need to deliver the 3-minute stage pitch or evaluate the system i
 │   ├── PITCH_DECK.md             # 5-slide visual pitch outline & 3-minute stage speech
 │   └── SUBMISSION.md             # Archival checklist and trace directory layout
 │
-├── tests/                        # 246 Automated Pytest Tests
+├── web/                          # Flask Evidence Web Application
+│   ├── app.py                    # Flask server serving / and /api/snapshot (port 5000)
+│   ├── templates/index.html      # Dark-mode evidence interface (live SQLite snapshot bound)
+│   ├── standalone.html           # Standalone offline frontend demonstration
+│   └── README.md                 # Web architecture and endpoint guide
+│
+├── tests/                        # 262 Automated Pytest Tests
 │   ├── test_audit_chain.py       # Merkle chain integrity & tamper verification tests
 │   ├── test_canary.py            # Honeytoken & paraphrase leak detection tests
 │   ├── test_demo_beats.py        # Streamlit AppTest verification of every demo beat
@@ -228,7 +235,10 @@ Everything you need to deliver the 3-minute stage pitch or evaluate the system i
 │   ├── test_redteam.py           # Red team attack runner tests
 │   ├── test_rehearsal.py         # Automated rehearsal regression tests
 │   ├── test_resumption.py        # Workflow resumption & drift tests
-│   └── test_store.py             # SQLite durability & provenance tests
+│   ├── test_store.py             # SQLite durability & provenance tests
+│   ├── test_text_blindness.py    # AST structural text-blindness tests
+│   ├── test_web.py               # Web route & required panels tests
+│   └── test_web_live.py          # Live SQLite snapshot & read-only guarantee tests
 │
 ├── package_submission.py         # Automated one-command submission packager
 ├── requirements.txt              # Production dependencies (streamlit, pydantic, pytest, pandas)

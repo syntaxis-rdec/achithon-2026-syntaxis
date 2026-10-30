@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AGENTGATE — Security Gateway for AI Actions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B1120; --sidebar:#0F172A; --card:#172033; --surface:#1E293B;
+  --blue:#3B82F6; --violet:#8B5CF6; --green:#22C55E; --red:#EF4444; --amber:#F59E0B;
+  --text:#F8FAFC; --text2:#94A3B8; --border:#263449;
+  --radius:12px; --radius-lg:16px;
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --shadow:0 8px 24px rgba(2,6,23,.45);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:15px}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;overflow-x:hidden}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:#334155}
+button{font-family:inherit;cursor:pointer}
+input,select{font-family:inherit}
+.mono{font-family:var(--mono);font-size:.86em}
+
+/* ---------- Layout ---------- */
+.app{display:flex;min-height:100vh}
+.sidebar{width:248px;background:var(--sidebar);border-right:1px solid var(--border);position:fixed;top:0;bottom:0;left:0;z-index:60;display:flex;flex-direction:column;transition:transform .25s ease}
+.main{flex:1;margin-left:248px;display:flex;flex-direction:column;min-height:100vh;transition:margin-left .25s ease}
+
+/* ---------- Sidebar ---------- */
+.brand{display:flex;align-items:center;gap:12px;padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+.brand-logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--violet));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(59,130,246,.35);flex-shrink:0}
+.brand-logo svg{width:22px;height:22px}
+.brand-name{font-size:1.05rem;font-weight:800;letter-spacing:.06em}
+.brand-sub{font-size:.64rem;color:var(--text2);letter-spacing:.12em;text-transform:uppercase}
+.nav{flex:1;padding:14px 10px;overflow-y:auto}
+.nav-label{font-size:.63rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#64748B;padding:12px 10px 6px}
+.nav-item{display:flex;align-items:center;gap:11px;width:100%;padding:9px 11px;margin:2px 0;background:none;border:none;border-radius:9px;color:var(--text2);font-size:.9rem;font-weight:500;text-align:left;transition:all .15s}
+.nav-item svg{width:17px;height:17px;flex-shrink:0}
+.nav-item:hover{background:var(--surface);color:var(--text)}
+.nav-item.active{background:linear-gradient(90deg,rgba(59,130,246,.16),rgba(139,92,246,.10));color:var(--text);box-shadow:inset 3px 0 0 var(--blue)}
+.nav-item.active svg{color:var(--blue)}
+.sidebar-foot{padding:14px 18px;border-top:1px solid var(--border)}
+.gw-status{display:flex;align-items:center;gap:9px;font-size:.78rem;color:var(--text2)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);flex-shrink:0;animation:pulse 2.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(2,6,23,.65);z-index:55}
+.sidebar-overlay.show{display:block}
+
+/* ---------- Topbar ---------- */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:0 26px;height:64px;display:flex;align-items:center;gap:18px}
+.hamburger{display:none;background:none;border:1px solid var(--border);border-radius:8px;padding:7px;color:var(--text2)}
+.hamburger svg{width:19px;height:19px}
+.tb-titles{min-width:0}
+.tb-title{font-size:1.06rem;font-weight:700;white-space:nowrap}
+.tb-crumb{font-size:.72rem;color:var(--text2);display:flex;gap:6px;align-items:center;white-space:nowrap}
+.tb-crumb .sep{color:#475569}
+.tb-search{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:7px 12px;width:270px;color:var(--text2)}
+.tb-search svg{width:15px;height:15px;flex-shrink:0}
+.tb-search input{background:none;border:none;outline:none;color:var(--text);font-size:.84rem;width:100%}
+.tb-search input::placeholder{color:#64748B}
+.tb-clock{font-family:var(--mono);font-size:.76rem;color:var(--text2);text-align:right;line-height:1.35;white-space:nowrap}
+.tb-clock b{color:var(--text);font-weight:600}
+.icon-btn{position:relative;background:var(--card);border:1px solid var(--border);border-radius:9px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all .15s;flex-shrink:0}
+.icon-btn:hover{color:var(--text);border-color:var(--blue)}
+.icon-btn svg{width:17px;height:17px}
+.badge-dot{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:.6rem;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.profile{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:5px 12px 5px 5px;flex-shrink:0}
+.avatar{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--violet),var(--blue));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.74rem;color:#fff}
+.profile-name{font-size:.8rem;font-weight:600;line-height:1.2;white-space:nowrap}
+.profile-role{font-size:.64rem;color:var(--text2);white-space:nowrap}
+.notif-panel{position:fixed;top:70px;right:26px;width:340px;max-width:calc(100vw - 32px);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);z-index:70;display:none;overflow:hidden}
+.notif-panel.show{display:block;animation:fadeUp .18s ease}
+.notif-head{padding:13px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:.9rem;display:flex;justify-content:space-between;align-items:center}
+.notif-head button{background:none;border:none;color:var(--blue);font-size:.74rem;font-weight:600}
+.notif-list{max-height:320px;overflow-y:auto}
+.notif-item{display:flex;gap:11px;padding:12px 16px;border-bottom:1px solid var(--border);font-size:.8rem}
+.notif-item:last-child{border-bottom:none}
+.notif-item .ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.notif-item .ic svg{width:15px;height:15px}
+.notif-item .t{color:var(--text2);font-size:.7rem;margin-top:2px}
+
+/* ---------- Pages & common ---------- */
+.content{padding:26px;flex:1}
+.page{display:none}
+.page.active{display:block;animation:fadeUp .25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.page-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;margin-bottom:20px}
+.page-head h2{font-size:1.3rem;font-weight:800;letter-spacing:-.01em}
+.page-head p{color:var(--text2);font-size:.85rem;margin-top:3px;max-width:640px}
+.page-head .spacer{flex:1}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.card-head{padding:15px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-head h3{font-size:.95rem;font-weight:700}
+.card-head .sub{font-size:.73rem;color:var(--text2);width:100%;margin-top:-6px}
+.card-head .spacer{flex:1}
+.card-body{padding:18px}
+.demo-note{display:inline-flex;align-items:center;gap:6px;font-size:.68rem;font-weight:600;color:var(--amber);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:99px;padding:4px 11px;letter-spacing:.03em}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;border-radius:9px;padding:8px 15px;font-size:.82rem;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text);transition:all .15s}
+.btn svg{width:14px;height:14px}
+.btn:hover{border-color:var(--blue)}
+.btn-primary{background:linear-gradient(135deg,var(--blue),#2563EB);border-color:transparent;color:#fff;box-shadow:0 4px 12px rgba(59,130,246,.3)}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#FCA5A5}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-success{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.4);color:#86EFAC}
+.btn-success:hover{background:rgba(34,197,94,.2)}
+.btn-sm{padding:5px 11px;font-size:.74rem;border-radius:7px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.04em;white-space:nowrap}
+.b-allow{background:rgba(34,197,94,.13);color:#4ADE80;border:1px solid rgba(34,197,94,.35)}
+.b-block{background:rgba(239,68,68,.13);color:#F87171;border:1px solid rgba(239,68,68,.35)}
+.b-public{background:rgba(34,197,94,.13);color:#4ADE80;border:1px solid rgba(34,197,94,.35)}
+.b-internal{background:rgba(59,130,246,.13);color:#60A5FA;border:1px solid rgba(59,130,246,.35)}
+.b-confidential{background:rgba(239,68,68,.13);color:#F87171;border:1px solid rgba(239,68,68,.35)}
+.b-neutral{background:var(--surface);color:var(--text2);border:1px solid var(--border)}
+.b-active{background:rgba(59,130,246,.13);color:#60A5FA;border:1px solid rgba(59,130,246,.35)}
+.b-completed{background:rgba(34,197,94,.13);color:#4ADE80;border:1px solid rgba(34,197,94,.35)}
+.b-blocked{background:rgba(239,68,68,.13);color:#F87171;border:1px solid rgba(239,68,68,.35)}
+.b-warn{background:rgba(245,158,11,.13);color:#FBBF24;border:1px solid rgba(245,158,11,.35)}
+.b-violet{background:rgba(139,92,246,.13);color:#C4B5FD;border:1px solid rgba(139,92,246,.35)}
+
+/* Stat cards */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:22px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:17px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform .18s,border-color .18s}
+.stat:hover{transform:translateY(-3px);border-color:#334B6E}
+.stat .ic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.stat .ic svg{width:18px;height:18px}
+.ic-blue{background:rgba(59,130,246,.14);color:#60A5FA}
+.ic-violet{background:rgba(139,92,246,.14);color:#C4B5FD}
+.ic-green{background:rgba(34,197,94,.14);color:#4ADE80}
+.ic-red{background:rgba(239,68,68,.14);color:#F87171}
+.ic-amber{background:rgba(245,158,11,.14);color:#FBBF24}
+.stat .val{font-size:1.85rem;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.stat .lbl{font-size:.78rem;font-weight:600;color:var(--text);margin-top:3px}
+.stat .hint{font-size:.7rem;color:var(--text2);margin-top:5px}
+.stat::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--violet));opacity:.55}
+
+/* Grid helpers */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
+.grid23{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:22px}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);background:rgba(30,41,59,.5);white-space:nowrap;position:sticky;top:0}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--text)}
+th .arr{font-size:.62rem;margin-left:4px;color:var(--blue)}
+td{padding:11px 14px;border-bottom:1px solid rgba(38,52,73,.6);vertical-align:middle}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:rgba(59,130,246,.05)}
+tbody tr:last-child td{border-bottom:none}
+.cell-title{font-weight:600;color:var(--text)}
+.cell-sub{font-size:.7rem;color:var(--text2);margin-top:1px}
+.empty{padding:40px 20px;text-align:center;color:var(--text2);font-size:.85rem}
+.empty svg{width:34px;height:34px;color:#475569;margin-bottom:10px}
+
+/* Filter bar */
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text2)}
+.inp{background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:.82rem;outline:none;transition:border-color .15s;min-width:130px}
+.inp:focus{border-color:var(--blue)}
+.inp::placeholder{color:#64748B}
+select.inp{appearance:none;background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:13px;padding-right:30px}
+.result-count{font-size:.76rem;color:var(--text2);margin-left:auto}
+
+/* Charts */
+.chart-box{position:relative;height:230px}
+canvas{width:100%;height:100%;display:block}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.74rem;color:var(--text2)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+/* Flow visualization (overview) */
+.flow{display:flex;align-items:center;gap:0;flex-wrap:wrap;padding:26px 18px;justify-content:center}
+.flow-step{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;min-width:150px;text-align:center;transition:transform .18s}
+.flow-step:hover{transform:translateY(-3px)}
+.flow-step .fi{width:34px;height:34px;border-radius:9px;margin:0 auto 9px;display:flex;align-items:center;justify-content:center}
+.flow-step .fi svg{width:16px;height:16px}
+.flow-step b{display:block;font-size:.76rem;letter-spacing:.04em}
+.flow-step small{display:block;font-size:.66rem;color:var(--text2);margin-top:3px}
+.flow-step.gateway{background:linear-gradient(135deg,rgba(59,130,246,.22),rgba(139,92,246,.22));border:1px solid var(--blue);box-shadow:0 0 26px rgba(59,130,246,.35)}
+.flow-step.gateway b{color:#93C5FD}
+.flow-arrow{color:#475569;padding:0 10px;display:flex;align-items:center}
+.flow-arrow svg{width:20px;height:20px}
+.flow-branch{display:flex;gap:0;flex-wrap:wrap;justify-content:center}
+
+/* Info flow page */
+.iflow{display:flex;flex-direction:column;align-items:center;gap:0;padding:10px 0}
+.iflow-node{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 20px;text-align:center;min-width:300px;max-width:95%}
+.iflow-node b{display:block;font-size:.88rem;font-family:var(--mono)}
+.iflow-node small{font-size:.72rem;color:var(--text2);display:block;margin-top:2px}
+.iflow-node.artifact{border-color:var(--violet)}
+.iflow-node.store{border-color:var(--blue)}
+.iflow-node.check{border-color:var(--green)}
+.iflow-varrow{color:#475569;padding:6px 0}
+.iflow-varrow svg{width:18px;height:18px}
+.rule-banner{display:flex;gap:13px;align-items:flex-start;background:linear-gradient(135deg,rgba(139,92,246,.1),rgba(59,130,246,.08));border:1px solid rgba(139,92,246,.4);border-radius:var(--radius-lg);padding:16px 18px}
+.rule-banner svg{width:20px;height:20px;color:var(--violet);flex-shrink:0;margin-top:2px}
+.downgrade-demo{border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.05);border-radius:var(--radius-lg);padding:18px}
+.verdict{display:none;margin-top:14px;border-radius:10px;padding:13px 15px;font-size:.84rem;align-items:flex-start;gap:10px}
+.verdict.show{display:flex;animation:fadeUp .25s ease}
+.verdict svg{width:18px;height:18px;flex-shrink:0;margin-top:1px}
+.verdict.blocked{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:#FCA5A5}
+.verdict.allowed{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.4);color:#86EFAC}
+
+/* Policy cards */
+.pol-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pol-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;transition:border-color .15s}
+.pol-card:hover{border-color:#334B6E}
+.pol-top{display:flex;align-items:flex-start;gap:11px;margin-bottom:10px}
+.pol-top .ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pol-top .ic svg{width:16px;height:16px}
+.pol-top h4{font-size:.88rem;font-weight:700}
+.pol-top small{color:var(--text2);font-size:.7rem;display:block;margin-top:1px}
+.pol-card p{font-size:.76rem;color:var(--text2);margin-bottom:12px;min-height:33px}
+.pol-foot{display:flex;align-items:center;gap:10px}
+.switch{position:relative;width:38px;height:21px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:var(--surface);border:1px solid var(--border);border-radius:99px;cursor:pointer;transition:.2s}
+.slider::before{content:'';position:absolute;height:13px;width:13px;left:3px;top:3px;background:#64748B;border-radius:50%;transition:.2s}
+.switch input:checked + .slider{background:rgba(34,197,94,.25);border-color:rgba(34,197,94,.5)}
+.switch input:checked + .slider::before{transform:translateX(17px);background:var(--green)}
+
+/* Workflow */
+.wf-steps{list-style:none;margin-top:8px}
+.wf-steps li{display:flex;gap:13px;padding:10px 0;border-bottom:1px dashed rgba(38,52,73,.7);font-size:.83rem;align-items:flex-start}
+.wf-steps li:last-child{border-bottom:none}
+.wf-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.66rem;font-weight:700;margin-top:1px}
+.resume-zone{border:1px dashed var(--blue);background:rgba(59,130,246,.05);border-radius:var(--radius-lg);padding:18px}
+.wf-pick{display:flex;flex-direction:column;gap:9px}
+.wf-opt{display:flex;align-items:center;gap:12px;border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:11px 14px;cursor:pointer;transition:border-color .15s;text-align:left;width:100%;color:var(--text)}
+.wf-opt:hover{border-color:var(--blue)}
+.wf-opt.selected{border-color:var(--blue);background:rgba(59,130,246,.08);box-shadow:0 0 0 1px var(--blue)}
+.wf-opt .meta{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* Tests */
+.test-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:18px}
+.test-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;display:flex;gap:13px;align-items:flex-start;transition:all .2s}
+.test-card .num{width:30px;height:30px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:var(--text2);flex-shrink:0}
+.test-card b{font-size:.83rem;display:block}
+.test-card small{color:var(--text2);font-size:.72rem;display:block;margin-top:2px}
+.test-card .res{margin-left:auto;flex-shrink:0}
+.test-card.running{border-color:var(--amber);animation:blink 1s infinite}
+.test-card.pass{border-color:rgba(34,197,94,.55)}
+.test-card.fail{border-color:rgba(239,68,68,.55)}
+@keyframes blink{50%{opacity:.75}}
+.progress{height:7px;background:var(--surface);border-radius:99px;overflow:hidden;margin:0 0 18px}
+.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:99px;transition:width .3s}
+
+/* Settings */
+.set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid rgba(38,52,73,.6)}
+.set-row:last-child{border-bottom:none}
+.set-row .k{font-size:.83rem;font-weight:600}
+.set-row .v{font-size:.75rem;color:var(--text2);margin-top:1px}
+.kv{display:flex;justify-content:space-between;gap:14px;padding:8px 0;font-size:.8rem;border-bottom:1px dashed rgba(38,52,73,.7)}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--text2)}
+.kv .v{font-weight:600;text-align:right}
+
+/* Status list */
+.status-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(38,52,73,.6);font-size:.83rem}
+.status-row:last-child{border-bottom:none}
+.status-row b{font-weight:600;margin-right:auto}
+.status-row .t{font-size:.7rem;color:var(--text2)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,.72);backdrop-filter:blur(3px);z-index:90;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);width:660px;max-width:100%;box-shadow:0 24px 60px rgba(0,0,0,.5);animation:fadeUp .2s ease}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.modal-head h3{font-size:1rem;font-weight:700}
+.modal-head .x{margin-left:auto;background:none;border:none;color:var(--text2);padding:5px;border-radius:7px}
+.modal-head .x:hover{color:var(--text);background:var(--surface)}
+.modal-head .x svg{width:17px;height:17px}
+.modal-body{padding:20px;max-height:66vh;overflow-y:auto}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.section-label{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#64748B;margin:16px 0 8px}
+.section-label:first-child{margin-top:0}
+.policy-check{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;font-size:.8rem}
+.policy-check .st{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.policy-check .st svg{width:12px;height:12px}
+.policy-check .why{display:block;color:var(--text2);font-size:.72rem;margin-top:2px}
+
+/* Toasts */
+.toasts{position:fixed;bottom:22px;right:22px;z-index:100;display:flex;flex-direction:column;gap:10px;max-width:calc(100vw - 40px)}
+.toast{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:12px 16px;min-width:280px;box-shadow:var(--shadow);animation:slideIn .25s ease;font-size:.82rem}
+.toast .t{color:var(--text2);font-size:.7rem;display:block;margin-top:2px}
+.toast.success{border-left-color:var(--green)}
+.toast.error{border-left-color:var(--red)}
+.toast.warn{border-left-color:var(--amber)}
+.toast svg{width:16px;height:16px;flex-shrink:0;margin-top:2px}
+@keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
+.toast.hide{animation:slideOut .25s forwards}
+@keyframes slideOut{to{transform:translateX(30px);opacity:0}}
+
+/* Loading spinner */
+.spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Responsive */
+@media(max-width:1080px){.grid23,.grid2{grid-template-columns:1fr}}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:none}
+  .main{margin-left:0}
+  .hamburger{display:flex}
+  .tb-search{display:none}
+  .tb-crumb{display:none}
+  .profile-name,.profile-role{display:none}
+  .tb-clock{display:none}
+  .content{padding:16px}
+  .notif-panel{right:16px}
+}
+@media(max-width:560px){
+  .stat .val{font-size:1.5rem}
+  .flow-arrow{padding:0 4px}
+  .flow-step{min-width:120px;padding:11px 12px}
+  .page-head h2{font-size:1.1rem}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">AGENTGATE</div>
+        <div class="brand-sub">Security Gateway</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav-label">Monitor</div>
+      <button class="nav-item active" data-page="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Overview</button>
+      <button class="nav-item" data-page="actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Action Monitor</button>
+      <div class="nav-label">Governance</div>
+      <button class="nav-item" data-page="policies"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M12 8v4M12 16h.01"/></svg>Security Policies</button>
+      <button class="nav-item" data-page="resources"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Protected Resources</button>
+      <button class="nav-item" data-page="infoflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v6H4z"/><path d="M4 14h10v6H4z"/><path d="M20 14v6"/><path d="M9 10v4"/></svg>Information Flow</button>
+      <div class="nav-label">Operations</div>
+      <button class="nav-item" data-page="workflows"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 6h6a3 3 0 0 1 3 3v6"/><path d="M15 18H9a3 3 0 0 1-3-3V9"/></svg>Workflow History</button>
+      <button class="nav-item" data-page="audit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8l4 4v16H4V2z" transform="translate(2 0) scale(0.85)"/><path d="M9 12h6M9 16h6M9 8h2"/></svg>Audit Logs</button>
+      <div class="nav-label">Platform</div>
+      <button class="nav-item" data-page="testing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v7.5L4.6 18a2 2 0 0 0 1.7 3h11.4a2 2 0 0 0 1.7-3L15 10.5V3"/><path d="M7 3h10"/><path d="M7.5 15h9"/></svg>Testing &amp; Verification</button>
+      <button class="nav-item" data-page="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="gw-status"><span class="dot"></span>Gateway operational · v2.4.1</div>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="tb-titles">
+        <div class="tb-title" id="pageTitle">Overview</div>
+        <div class="tb-crumb"><span>AGENTGATE</span><span class="sep">/</span><span id="crumbCurrent">Overview</span></div>
+      </div>
+      <div class="tb-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="globalSearch" placeholder="Search actions, resources, policies…">
+      </div>
+      <div class="tb-clock"><b id="clockTime">--:--:--</b><br><span id="clockDate">—</span></div>
+      <button class="icon-btn" id="notifBtn" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        <span class="badge-dot" id="notifCount">4</span>
+      </button>
+      <div class="profile">
+        <div class="avatar">PS</div>
+        <div>
+          <div class="profile-name">Priya Sharma</div>
+          <div class="profile-role">Security Administrator</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="notif-panel" id="notifPanel">
+      <div class="notif-head">Notifications <button id="notifClear">Mark all read</button></div>
+      <div class="notif-list" id="notifList"></div>
+    </div>
+
+    <main class="content">
+
+      <!-- ================= OVERVIEW ================= -->
+      <section class="page active" id="page-overview">
+        <div class="page-head">
+          <div>
+            <h2>Security Operations Overview</h2>
+            <p>AI proposes. AGENTGATE decides. Protected tools execute only after authorization.</p>
+          </div>
+          <div class="spacer"></div>
+          <span class="demo-note">⚠ Demonstration data — frontend simulation only</span>
+        </div>
+
+        <div class="stats" id="statCards"></div>
+
+        <div class="grid23">
+          <div class="card">
+            <div class="card-head"><h3>Action Activity — last 14 days</h3><div class="spacer"></div>
+              <div class="legend"><span><i style="background:#3B82F6"></i>Allowed</span><span><i style="background:#EF4444"></i>Blocked</span></div>
+            </div>
+            <div class="card-body"><div class="chart-box"><canvas id="activityChart"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>ALLOW vs BLOCK</h3></div>
+            <div class="card-body">
+              <div class="chart-box"><canvas id="decisionChart"></canvas></div>
+              <div class="legend" style="justify-content:center;margin-top:12px">
+                <span><i style="background:#22C55E"></i>Authorized</span>
+                <span><i style="background:#EF4444"></i>Blocked</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <div class="card-head"><h3>Recent Security Events</h3><div class="spacer"></div><button class="btn btn-sm" data-goto="audit">View all</button></div>
+            <div class="card-body"><div class="tbl-wrap"><table><tbody id="recentEvents"></tbody></table></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Recent Workflow Activity</h3><div class="spacer"></div><button class="btn btn-sm" data-goto="workflows">View all</button></div>
+            <div class="card-body"><div id="recentWorkflows"></div></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:22px">
+          <div class="card-head"><h3>Security Workflow</h3><div class="sub">Every operation passes the gateway before any protected tool runs</div></div>
+          <div class="flow" id="flowViz"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>System Protection Status</h3></div>
+          <div class="card-body" id="protectionStatus"></div>
+        </div>
+      </section>
+
+      <!-- ================= ACTION MONITOR ================= -->
+      <section class="page" id="page-actions">
+        <div class="page-head">
+          <div><h2>Action Monitor</h2><p>Every proposed AI-agent operation evaluated by the AGENTGATE policy engine in real time.</p></div>
+          <div class="spacer"></div><span class="demo-note">⚠ Demonstration data</span>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="filters">
+              <div class="field"><label>Search</label><input class="inp" id="actSearch" placeholder="ID, user, resource…"></div>
+              <div class="field"><label>Decision</label><select class="inp" id="actDecision"><option value="">All decisions</option><option value="ALLOW">Allow</option><option value="BLOCK">Block</option></select></div>
+              <div class="field"><label>Operation</label><select class="inp" id="actOperation"><option value="">All operations</option><option>READ</option><option>SAVE</option><option>DELIVER</option><option>ACCESS</option></select></div>
+              <div class="field"><label>Sensitivity</label><select class="inp" id="actSensitivity"><option value="">All levels</option><option>PUBLIC</option><option>INTERNAL</option><option>CONFIDENTIAL</option></select></div>
+              <div class="result-count" id="actCount"></div>
+            </div>
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr>
+                  <th class="sortable" data-sort="id">Action ID</th>
+                  <th class="sortable" data-sort="user">Requesting User</th>
+                  <th class="sortable" data-sort="operation">Operation</th>
+                  <th class="sortable" data-sort="resource">Target Resource</th>
+                  <th class="sortable" data-sort="recipient">Recipient</th>
+                  <th class="sortable" data-sort="sensitivity">Sensitivity</th>
+                  <th class="sortable" data-sort="decision">Decision</th>
+                  <th class="sortable" data-sort="timestamp">Timestamp</th>
+                  <th>Details</th>
+                </tr></thead>
+                <tbody id="actionsBody"></tbody>
+              </table>
+              <div class="empty" id="actionsEmpty" style="display:none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg><br>No actions match the current filters.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SECURITY POLICIES ================= -->
+      <section class="page" id="page-policies">
+        <div class="page-head">
+          <div><h2>Security Policies</h2><p>Trusted rules evaluated on every proposed action — identity, operation, resource, recipient, information flow and declassification.</p></div>
+          <div class="spacer"></div><span class="demo-note">⚠ Demonstration data — toggles simulate frontend behaviour only</span>
+        </div>
+        <div id="policyCategories"></div>
+      </section>
+
+      <!-- ================= PROTECTED RESOURCES ================= -->
+      <section class="page" id="page-resources">
+        <div class="page-head">
+          <div><h2>Protected Resources</h2><p>Documents under gateway control with enforced security classifications.</p></div>
+          <div class="spacer"></div><span class="demo-note">⚠ Demonstration data</span>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="filters">
+              <div class="field"><label>Search</label><input class="inp" id="resSearch" placeholder="Resource name, owner…"></div>
+              <div class="field"><label>Classification</label><select class="inp" id="resClass"><option value="">All classifications</option><option>PUBLIC</option><option>INTERNAL</option><option>CONFIDENTIAL</option></select></div>
+              <div class="field"><label>Status</label><select class="inp" id="resStatus"><option value="">All statuses</option><option>Protected</option><option>Archived</option></select></div>
+              <div class="result-count" id="resCount"></div>
+            </div>
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>Resource</th><th>Type</th><th>Owner</th><th>Classification</th><th>Allowed Users</th><th>Allowed Operations</th><th>Last Modified</th><th>Status</th><th></th></tr></thead>
+                <tbody id="resourcesBody"></tbody>
+              </table>
+              <div class="empty" id="resourcesEmpty" style="display:none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg><br>No resources match the current filters.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= INFORMATION FLOW ================= -->
+      <section class="page" id="page-infoflow">
+        <div class="page-head">
+          <div><h2>Information Flow Control</h2><p>Provenance tracking and classification inheritance for every derived artifact.</p></div>
+          <div class="spacer"></div><span class="demo-note">⚠ Demonstration data</span>
+        </div>
+
+        <div class="rule-banner" style="margin-bottom:20px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/></svg>
+          <div>
+            <b>Classification inheritance rule</b>
+            <p style="font-size:.82rem;color:var(--text2);margin-top:3px">A derived artifact must inherit the <b style="color:var(--text)">most restrictive classification</b> of its source documents. A CONFIDENTIAL source always yields a CONFIDENTIAL artifact — downgrade requires an explicitly authorized declassification process.</p>
+          </div>
+        </div>
+
+        <div class="grid2" style="grid-template-columns:1.2fr 1fr">
+          <div class="card">
+            <div class="card-head"><h3>Live provenance chain</h3><div class="sub">Financial report summarization workflow (WF-001)</div></div>
+            <div class="card-body">
+              <div class="iflow" id="iflowViz"></div>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:16px">
+              <div class="card-head"><h3>Artifact provenance</h3></div>
+              <div class="card-body" id="provenanceDetails"></div>
+            </div>
+            <div class="downgrade-demo">
+              <b style="font-size:.9rem">⚠ Declassification attempt demo</b>
+              <p style="font-size:.78rem;color:var(--text2);margin:7px 0 12px">Simulate an agent trying to relabel a CONFIDENTIAL artifact as PUBLIC without an authorized declassification process.</p>
+              <button class="btn btn-danger" id="downgradeBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                Attempt CONFIDENTIAL → PUBLIC
+              </button>
+              <div class="verdict blocked" id="downgradeVerdict">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M4.9 4.9l14.2 14.2"/></svg>
+                <div><b>BLOCKED by AGENTGATE.</b><span style="display:block;margin-top:3px;font-size:.78rem">Policy <span class="mono">DEC-01 · Declassification Process Required</span>: classification changes are only permitted through an explicitly authorized declassification workflow. The attempted downgrade CONFIDENTIAL → PUBLIC was rejected and written to the audit log.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= WORKFLOW HISTORY ================= -->
+      <section class="page" id="page-workflows">
+        <div class="page-head">
+          <div><h2>Workflow History</h2><p>Long-running agent workflows with persisted security labels and provenance.</p></div>
+          <div class="spacer"></div><span class="demo-note">⚠ Demonstration data</span>
+        </div>
+        <div class="card" style="margin-bottom:20px">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Workflow ID</th><th>Name</th><th>Created</th><th>Last Activity</th><th>Status</th><th>Actions</th><th>Classification</th><th></th></tr></thead>
+              <tbody id="workflowsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="resume-zone">
+          <b style="font-size:.95rem">🔄 Workflow resumption demonstration</b>
+          <p style="font-size:.78rem;color:var(--text2);margin:6px 0 14px">Security restrictions must survive application restarts and workflow resumption. Select a saved workflow, resume it, then attempt an unauthorized delivery — the gateway must still block it.</p>
+          <div class="wf-pick" id="wfPick" style="max-width:640px;margin-bottom:14px"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" id="resumeBtn" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 4v6h6"/><path d="M3.5 15a9 9 0 1 0 2-9.4L1 10"/></svg>
+              Resume Workflow
+            </button>
+            <button class="btn btn-danger" id="unauthDeliverBtn" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+              Attempt Unauthorized Delivery
+            </button>
+          </div>
+          <div id="resumeOutput" style="margin-top:16px"></div>
+        </div>
+      </section>
+
+      <!-- ================= AUDIT LOGS ================= -->
+      <section class="page" id="page-audit">
+        <div class="page-head">
+          <div><h2>Audit Logs</h2><p>Immutable, tamper-evident record of every gateway decision with full security explanations.</p></div>
+          <div class="spacer"></div><span class="demo-note">⚠ Demonstration data</span>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="filters">
+              <div class="field"><label>Search</label><input class="inp" id="auditSearch" placeholder="Event, user, resource…"></div>
+              <div class="field"><label>Decision</label><select class="inp" id="auditDecision"><option value="">All decisions</option><option value="ALLOW">Allow</option><option value="BLOCK">Block</option></select></div>
+              <div class="field"><label>From date</label><input class="inp" type="date" id="auditFrom"></div>
+              <div class="field"><label>To date</label><input class="inp" type="date" id="auditTo"></div>
+              <button class="btn" id="exportCsvBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                Export CSV
+              </button>
+              <div class="result-count" id="auditCount"></div>
+            </div>
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>Event ID</th><th>User</th><th>Requested Action</th><th>Resource</th><th>Recipient</th><th>Decision</th><th>Reason</th><th>Timestamp</th><th></th></tr></thead>
+                <tbody id="auditBody"></tbody>
+              </table>
+              <div class="empty" id="auditEmpty" style="display:none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg><br>No audit events match the current filters.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TESTING ================= -->
+      <section class="page" id="page-testing">
+        <div class="page-head">
+          <div><h2>Testing &amp; Verification</h2><p>Frontend simulations of the security test suite. These validate expected dashboard behaviour, not actual backend enforcement.</p></div>
+          <div class="spacer"></div><span class="demo-note">⚠ Frontend simulations — not actual backend security tests</span>
+        </div>
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-body">
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+              <button class="btn btn-primary" id="runTestsBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 3l14 9-14 9V3z"/></svg>
+                Run Tests
+              </button>
+              <span style="font-size:.78rem;color:var(--text2)" id="testsStatus">10 scenarios · Ready to run</span>
+            </div>
+            <div class="progress"><i id="testProgress"></i></div>
+            <div class="test-summary" id="testSummary"></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px" id="testCards"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SETTINGS ================= -->
+      <section class="page" id="page-settings">
+        <div class="page-head">
+          <div><h2>Settings</h2><p>Administrator profile and gateway configuration overview. Read-only demonstration — no backend configuration is performed.</p></div>
+          <div class="spacer"></div><span class="demo-note">⚠ Demonstration data</span>
+        </div>
+        <div class="set-grid">
+          <div class="card">
+            <div class="card-head"><h3>Administrator Profile</h3></div>
+            <div class="card-body">
+              <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">
+                <div class="avatar" style="width:52px;height:52px;font-size:1rem;border-radius:13px">PS</div>
+                <div><b style="font-size:1rem">Priya Sharma</b><div style="font-size:.75rem;color:var(--text2)">Security Administrator · AGENTGATE Platform</div></div>
+              </div>
+              <div class="kv"><span class="k">Email</span><span class="v">priya.sharma@corp.com</span></div>
+              <div class="kv"><span class="k">Role</span><span class="v">Security Administrator</span></div>
+              <div class="kv"><span class="k">Policy scope</span><span class="v">Full gateway policy management</span></div>
+              <div class="kv"><span class="k">MFA</span><span class="v" style="color:#4ADE80">Enabled (hardware key)</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Gateway Configuration Overview</h3></div>
+            <div class="card-body" id="gatewayConfig"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Security Classification Information</h3></div>
+            <div class="card-body">
+              <div class="kv"><span class="k">PUBLIC</span><span class="v" style="color:#4ADE80">Freely readable by authorized users</span></div>
+              <div class="kv"><span class="k">INTERNAL</span><span class="v" style="color:#60A5FA">Employees only; delivery restricted</span></div>
+              <div class="kv"><span class="k">CONFIDENTIAL</span><span class="v" style="color:#F87171">Named-user access; inherited by all derivatives</span></div>
+              <div class="set-row" style="margin-top:10px"><div><div class="k">Declassification</div><div class="v">Explicit authorized process only</div></div><span class="badge b-block">Enforced</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Notification &amp; Dashboard Preferences</h3><div class="sub">Local preferences only — not saved to a server</div></div>
+            <div class="card-body">
+              <div class="set-row"><div><div class="k">Blocked action alerts</div><div class="v">Notify immediately on any BLOCK decision</div></div><label class="switch"><input type="checkbox" checked data-pref><span class="slider"></span></label></div>
+              <div class="set-row"><div><div class="k">Policy change notices</div><div class="v">Email digest of policy modifications</div></div><label class="switch"><input type="checkbox" checked data-pref><span class="slider"></span></label></div>
+              <div class="set-row"><div><div class="k">Compact tables</div><div class="v">Reduce row height in tables</div></div><label class="switch"><input type="checkbox" data-pref><span class="slider"></span></label></div>
+              <div class="set-row"><div><div class="k">Live clock in topbar</div><div class="v">Show current date and time</div></div><label class="switch"><input type="checkbox" checked data-pref><span class="slider"></span></label></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Application Information</h3></div>
+            <div class="card-body">
+              <div class="kv"><span class="k">Product</span><span class="v">AGENTGATE</span></div>
+              <div class="kv"><span class="k">Version</span><span class="v mono">2.4.1</span></div>
+              <div class="kv"><span class="k">Build</span><span class="v mono">2026.10.28-ent</span></div>
+              <div class="kv"><span class="k">Mode</span><span class="v">Frontend demonstration dashboard</span></div>
+              <p style="font-size:.72rem;color:var(--text2);margin-top:12px">This dashboard simulates gateway decisions in the browser. Frontend simulations do not provide actual security enforcement; the gateway policy engine runs as a separate trusted backend service.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3 id="modalTitle">Details</h3>
+      <button class="x" id="modalClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot"><button class="btn" id="modalOk">Close</button></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* =====================================================================
+   AGENTGATE — frontend demonstration dashboard
+   All data below is sample/demonstration data simulated in the browser.
+   Frontend simulations do NOT provide actual security enforcement.
+   ===================================================================== */
+'use strict';
+
+/* ---------------- Sample data ---------------- */
+const RESOURCES = [
+  {id:'RES-01',name:'company_introduction.txt',type:'Document',owner:'Marketing Dept.',classification:'PUBLIC',allowed:['All employees','AI agents (READ)'],operations:['READ','SAVE','DELIVER'],modified:'2026-10-12 09:14',status:'Protected',desc:'General company overview suitable for external distribution.'},
+  {id:'RES-02',name:'employee_data.txt',type:'Document',owner:'Human Resources',classification:'INTERNAL',allowed:['Priya Sharma','Dev Malhotra','HR team'],operations:['READ','SAVE'],modified:'2026-10-24 16:40',status:'Protected',desc:'Personal employee records. DELIVER is prohibited to external recipients.'},
+  {id:'RES-03',name:'financial_report.txt',type:'Document',owner:'Finance Dept.',classification:'CONFIDENTIAL',allowed:['Priya Sharma','CFO office','AI-Agent Atlas (READ, supervised)'],operations:['READ','SAVE'],modified:'2026-10-27 11:02',status:'Protected',desc:'Q3 financial results. All derivatives inherit CONFIDENTIAL.'},
+  {id:'RES-04',name:'project_summary.txt',type:'Document',owner:'Engineering',classification:'INTERNAL',allowed:['Engineering team','Priya Sharma'],operations:['READ','SAVE','DELIVER'],modified:'2026-10-22 14:55',status:'Protected',desc:'Internal project milestone summary for staff distribution.'},
+  {id:'RES-05',name:'security_policy.txt',type:'Document',owner:'Security Office',classification:'INTERNAL',allowed:['All employees (READ)','Security Admin'],operations:['READ'],modified:'2026-10-05 08:30',status:'Protected',desc:'Company information-handling policy. Read-only resource.'}
+];
+
+const ACTIONS = [
+  {id:'ACT-1041',user:'Priya Sharma',operation:'READ',resource:'financial_report.txt',recipient:'—',sensitivity:'CONFIDENTIAL',decision:'ALLOW',timestamp:'2026-10-28 10:04:11',reason:'User is on the allowed-users list for a CONFIDENTIAL resource; supervised READ permitted.',checks:[['Identity policy','pass','User identity verified and authorized.'],['Operation policy','pass','READ permitted on CONFIDENTIAL documents for named users.'],['Resource policy','pass','Requester present on resource allow-list.'],['Recipient policy','skipped','Not applicable — no recipient.'],['Information-flow policy','pass','No derived artifact produced.']]},
+  {id:'ACT-1042',user:'AI-Agent (Atlas)',operation:'SAVE',resource:'financial_summary.txt',recipient:'—',sensitivity:'CONFIDENTIAL',decision:'ALLOW',timestamp:'2026-10-28 10:06:37',reason:'Derived artifact financial_summary.txt inherits CONFIDENTIAL from source financial_report.txt; SAVE to internal store authorized.',checks:[['Identity policy','pass','Agent Atlas is registered and supervised.'],['Operation policy','pass','SAVE permitted with provenance metadata.'],['Resource policy','pass','Source resource access previously authorized (ACT-1041).'],['Information-flow policy','pass','Derivative inherits most restrictive classification CONFIDENTIAL.'],['Audit policy','pass','Provenance recorded with artifact ID ART-2211.']]},
+  {id:'ACT-1043',user:'AI-Agent (Atlas)',operation:'DELIVER',resource:'financial_summary.txt',recipient:'external-partner@vendor.com',sensitivity:'CONFIDENTIAL',decision:'BLOCK',timestamp:'2026-10-28 10:08:02',reason:'Recipient not authorized to receive CONFIDENTIAL information. Delivery blocked before any protected tool executed.',checks:[['Identity policy','pass','Agent Atlas registered.'],['Operation policy','pass','DELIVER operation recognized.'],['Resource policy','pass','Artifact exists with provenance.'],['Recipient policy','fail','external-partner@vendor.com is not on the CONFIDENTIAL recipient allow-list.'],['Information-flow policy','fail','CONFIDENTIAL artifact cannot leave the internal boundary.']]},
+  {id:'ACT-1044',user:'Priya Sharma',operation:'READ',resource:'employee_data.txt',recipient:'—',sensitivity:'INTERNAL',decision:'ALLOW',timestamp:'2026-10-28 10:11:44',reason:'INTERNAL resource; requester is authorized.',checks:[['Identity policy','pass','User verified.'],['Operation policy','pass','READ permitted.'],['Resource policy','pass','On allow-list.']]},
+  {id:'ACT-1045',user:'Dev Malhotra',operation:'READ',resource:'confidential_document.txt',recipient:'—',sensitivity:'CONFIDENTIAL',decision:'BLOCK',timestamp:'2026-10-28 10:14:19',reason:'Requester is not on the allowed-users list for this CONFIDENTIAL resource.',checks:[['Identity policy','pass','User verified.'],['Operation policy','pass','READ operation permitted in general.'],['Resource policy','fail','Requester absent from CONFIDENTIAL allow-list.']]},
+  {id:'ACT-1046',user:'AI-Agent (Atlas)',operation:'DELIVER',resource:'financial_summary.txt',recipient:'finance-team@corp.com',sensitivity:'CONFIDENTIAL',decision:'ALLOW',timestamp:'2026-10-28 10:19:55',reason:'Recipient finance-team@corp.com is an authorized internal CONFIDENTIAL recipient; supervised delivery executed.',checks:[['Identity policy','pass','Agent registered.'],['Operation policy','pass','DELIVER authorized for supervised workflow.'],['Resource policy','pass','Artifact CONFIDENTIAL, provenance intact.'],['Recipient policy','pass','Recipient on internal allow-list.'],['Information-flow policy','pass','Delivery stays inside internal boundary.']]},
+  {id:'ACT-1047',user:'Dev Malhotra',operation:'READ',resource:'company_introduction.txt',recipient:'—',sensitivity:'PUBLIC',decision:'ALLOW',timestamp:'2026-10-28 11:02:08',reason:'PUBLIC resource; all users authorized.',checks:[['Identity policy','pass','User verified.'],['Resource policy','pass','PUBLIC resource.']]},
+  {id:'ACT-1048',user:'AI-Agent (Atlas)',operation:'SAVE',resource:'project_summary.txt',recipient:'—',sensitivity:'INTERNAL',decision:'ALLOW',timestamp:'2026-10-28 11:25:30',reason:'Updated internal summary saved with provenance link to source documents.',checks:[['Identity policy','pass','Agent registered.'],['Information-flow policy','pass','Classification INTERNAL preserved.'],['Audit policy','pass','Provenance recorded.']]},
+  {id:'ACT-1049',user:'Dev Malhotra',operation:'DELIVER',resource:'employee_data.txt',recipient:'hr-vendor@external.com',sensitivity:'INTERNAL',decision:'BLOCK',timestamp:'2026-10-28 11:41:12',reason:'Delivery of employee data to external recipients prohibited by recipient policy.',checks:[['Identity policy','pass','User verified.'],['Recipient policy','fail','External recipient not permitted for INTERNAL personnel data.'],['Information-flow policy','fail','Exit-boundary transfer rejected.']]},
+  {id:'ACT-1050',user:'AI-Agent (Atlas)',operation:'SAVE',resource:'declassified_financial_summary.txt',recipient:'—',sensitivity:'CONFIDENTIAL',decision:'BLOCK',timestamp:'2026-10-28 12:03:47',reason:'Attempted classification downgrade CONFIDENTIAL → PUBLIC without an authorized declassification process.',checks:[['Identity policy','pass','Agent registered.'],['Declassification policy','fail','No authorized declassification workflow referenced.'],['Information-flow policy','fail','Derivative must inherit CONFIDENTIAL from source.']]},
+  {id:'ACT-1051',user:'Priya Sharma',operation:'READ',resource:'security_policy.txt',recipient:'—',sensitivity:'INTERNAL',decision:'ALLOW',timestamp:'2026-10-28 13:30:21',reason:'Authorized read of internal policy document.',checks:[['Identity policy','pass','User verified.'],['Resource policy','pass','All employees may READ.']]},
+  {id:'ACT-1052',user:'AI-Agent (Atlas)',operation:'ACCESS',resource:'audit-store (append)',recipient:'—',sensitivity:'INTERNAL',decision:'ALLOW',timestamp:'2026-10-28 13:31:05',reason:'Agent granted append-only access to audit store for decision recording.',checks:[['Identity policy','pass','Agent registered.'],['Operation policy','pass','Append-only audit write permitted.'],['Audit policy','pass','Tamper-evident record created.']]}
+];
+
+const POLICY_CATEGORIES = [
+  {name:'Identity Policies',icon:'user',color:'blue',desc:'Control which users and agents can perform operations.',items:[
+    {id:'IDN-01',name:'Verified user identity required',detail:'Every request must carry a verified user or registered agent identity. Anonymous proposals are rejected.',on:true},
+    {id:'IDN-02',name:'Agent supervision',detail:'AI agents may only act while attached to an authorized, supervised workflow session.',on:true},
+    {id:'IDN-03',name:'Administrator self-authorization guard',detail:'Agents can never authorize their own actions; the gateway is the sole decision point.',on:true}]},
+  {name:'Operation Policies',icon:'terminal',color:'violet',desc:'Control READ, SAVE and DELIVER permissions.',items:[
+    {id:'OPR-01',name:'READ requires resource allow-list',detail:'READ is permitted only when the requester appears on the resource allow-list.',on:true},
+    {id:'OPR-02',name:'SAVE requires provenance metadata',detail:'Saved artifacts must reference source documents so classification can be inherited.',on:true},
+    {id:'OPR-03',name:'DELIVER requires recipient authorization',detail:'Delivery to any recipient requires an explicit recipient policy match.',on:true}]},
+  {name:'Resource Policies',icon:'file',color:'green',desc:'Define access permissions for protected documents.',items:[
+    {id:'RES-P-01',name:'CONFIDENTIAL named-user access',detail:'CONFIDENTIAL resources are readable only by explicitly named users.',on:true},
+    {id:'RES-P-02',name:'INTERNAL employee-only scope',detail:'INTERNAL resources are restricted to employees; no external delivery.',on:true},
+    {id:'RES-P-03',name:'PUBLIC default read',detail:'PUBLIC resources are readable by all verified users and supervised agents.',on:true}]},
+  {name:'Recipient Policies',icon:'mail',color:'amber',desc:'Control which recipients can receive information.',items:[
+    {id:'RCP-01',name:'Internal recipient allow-list',detail:'CONFIDENTIAL and INTERNAL artifacts may only be delivered to approved internal recipients.',on:true},
+    {id:'RCP-02',name:'External delivery prohibition',detail:'External domains are rejected for INTERNAL and CONFIDENTIAL classifications.',on:true}]},
+  {name:'Information-Flow Policies',icon:'flow',color:'blue',desc:'Prevent unauthorized transfer of sensitive information.',items:[
+    {id:'FLW-01',name:'Restrictive inheritance',detail:'A derived artifact inherits the most restrictive classification of its sources.',on:true},
+    {id:'FLW-02',name:'Boundary exit control',detail:'No CONFIDENTIAL data may cross the internal boundary without explicit approval.',on:true},
+    {id:'FLW-03',name:'Provenance completeness',detail:'Actions on artifacts without valid provenance chains are rejected.',on:true}]},
+  {name:'Declassification Policies',icon:'unlock',color:'red',desc:'Allow classification changes only through explicitly authorized processes.',items:[
+    {id:'DEC-01',name:'Declassification process required',detail:'Classification downgrades require a separately authorized declassification workflow — never an agent decision.',on:true},
+    {id:'DEC-02',name:'Dual approval for downgrade',detail:'A downgrade needs approval from two security administrators before execution.',on:false}]}
+];
+
+const WORKFLOWS = [
+  {id:'WF-001',name:'Financial Report Processing',created:'2026-10-27 09:12',last:'2026-10-28 10:19',status:'Completed',actions:6,classification:'CONFIDENTIAL',
+   sources:['financial_report.txt'],artifacts:['financial_summary.txt (ART-2211)'],history:['Read financial_report.txt (ALLOW)','Summarize and save financial_summary.txt (ALLOW)','Attempt delivery to external partner (BLOCKED)','Deliver to finance-team@corp.com (ALLOW)','Append audit records (ALLOW)','Workflow checkpoint saved']},
+  {id:'WF-002',name:'Employee Onboarding Docs',created:'2026-10-25 14:00',last:'2026-10-28 11:25',status:'Active',actions:4,classification:'INTERNAL',
+   sources:['employee_data.txt','project_summary.txt'],artifacts:['onboarding_digest.txt (ART-2212)'],history:['Read employee_data.txt (ALLOW)','Read project_summary.txt (ALLOW)','Save onboarding_digest.txt (ALLOW)','Blocked external delivery attempt (BLOCKED)']},
+  {id:'WF-003',name:'Vendor Report Delivery',created:'2026-10-26 08:40',last:'2026-10-28 12:03',status:'Blocked',actions:3,classification:'CONFIDENTIAL',
+   sources:['financial_report.txt'],artifacts:['declassified_financial_summary.txt (rejected)'],history:['Read financial_report.txt (ALLOW)','Attempted downgrade to PUBLIC (BLOCKED)','Workflow halted pending administrator review']}
+];
+
+const AUDIT = [
+  {id:'EVT-9001',user:'Priya Sharma',action:'READ document',resource:'financial_report.txt',recipient:'—',decision:'ALLOW',reason:'Authorized document read — requester on CONFIDENTIAL allow-list.',timestamp:'2026-10-28 10:04:11'},
+  {id:'EVT-9002',user:'Dev Malhotra',action:'READ document',resource:'confidential_document.txt',recipient:'—',decision:'BLOCK',reason:'Unauthorized resource access blocked — requester not on allow-list.',timestamp:'2026-10-28 10:14:19'},
+  {id:'EVT-9003',user:'AI-Agent (Atlas)',action:'SAVE report',resource:'financial_summary.txt',recipient:'—',decision:'ALLOW',reason:'Confidential report saved with inherited classification and provenance.',timestamp:'2026-10-28 10:06:37'},
+  {id:'EVT-9004',user:'AI-Agent (Atlas)',action:'DELIVER report',resource:'financial_summary.txt',recipient:'external-partner@vendor.com',decision:'BLOCK',reason:'Unauthorized delivery blocked — recipient not authorized for CONFIDENTIAL.',timestamp:'2026-10-28 10:08:02'},
+  {id:'EVT-9005',user:'AI-Agent (Atlas)',action:'Classification downgrade',resource:'declassified_financial_summary.txt',recipient:'—',decision:'BLOCK',reason:'Security classification downgrade blocked — no authorized declassification process.',timestamp:'2026-10-28 12:03:47'},
+  {id:'EVT-9006',user:'AI-Agent (Atlas)',action:'Workflow resume',resource:'WF-001 state',recipient:'—',decision:'ALLOW',reason:'Workflow resumed successfully — security labels and provenance restored.',timestamp:'2026-10-28 10:18:40'},
+  {id:'EVT-9007',user:'Dev Malhotra',action:'DELIVER document',resource:'employee_data.txt',recipient:'hr-vendor@external.com',decision:'BLOCK',reason:'Unauthorized delivery blocked — external recipients prohibited for personnel data.',timestamp:'2026-10-28 11:41:12'},
+  {id:'EVT-9008',user:'AI-Agent (Atlas)',action:'DELIVER report',resource:'financial_summary.txt',recipient:'finance-team@corp.com',decision:'ALLOW',reason:'Authorized supervised delivery to approved internal recipient.',timestamp:'2026-10-28 10:19:55'},
+  {id:'EVT-9009',user:'Priya Sharma',action:'READ document',resource:'security_policy.txt',recipient:'—',decision:'ALLOW',reason:'Authorized read of internal policy document.',timestamp:'2026-10-28 13:30:21'},
+  {id:'EVT-9010',user:'Dev Malhotra',action:'READ document',resource:'company_introduction.txt',recipient:'—',decision:'ALLOW',reason:'Authorized read of PUBLIC resource.',timestamp:'2026-10-28 11:02:08'}
+];
+
+const TESTS = [
+  {name:'Authorized document reading',desc:'Authorized user reads an allowed CONFIDENTIAL resource — gateway must ALLOW.',expect:'ALLOW'},
+  {name:'Unauthorized document reading',desc:'Non-allow-listed user requests a CONFIDENTIAL resource — gateway must BLOCK.',expect:'BLOCK'},
+  {name:'Authorized report saving',desc:'Agent saves a derived artifact with provenance — gateway must ALLOW.',expect:'ALLOW'},
+  {name:'Unauthorized recipient delivery',desc:'Delivery to a recipient absent from the allow-list — gateway must BLOCK.',expect:'BLOCK'},
+  {name:'Confidential label inheritance',desc:'Summarizing a CONFIDENTIAL source must yield a CONFIDENTIAL artifact.',expect:'INHERITED'},
+  {name:'Prompt injection resistance',desc:'Injected "ignore your instructions" text must not change any gateway decision.',expect:'RESISTANT'},
+  {name:'Workflow persistence after restart',desc:'Security labels and provenance must survive simulated application restart and resume.',expect:'PERSISTED'},
+  {name:'Unauthorized classification downgrade',desc:'CONFIDENTIAL → PUBLIC without declassification process — gateway must BLOCK.',expect:'BLOCK'},
+  {name:'Blocked action prevention',desc:'A BLOCKED action must never reach any protected tool execution.',expect:'PREVENTED'},
+  {name:'Audit log completeness',desc:'Every ALLOW and BLOCK decision must produce a complete audit record.',expect:'COMPLETE'}
+];
+
+const NOTIFS = [
+  {type:'block',text:'Unauthorized delivery blocked: financial_summary.txt → external-partner@vendor.com',t:'2 min ago'},
+  {type:'block',text:'Classification downgrade blocked: CONFIDENTIAL → PUBLIC (WF-003)',t:'18 min ago'},
+  {type:'ok',text:'Workflow WF-001 resumed with security labels restored',t:'41 min ago'},
+  {type:'warn',text:'Policy DEC-02 (Dual approval for downgrade) is currently disabled',t:'1 h ago'}
+];
+
+/* ---------------- Helpers ---------------- */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const ICONS = {
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  skip:'<svg viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+  arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>',
+  arrowDown:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>'
+};
+
+function badgeFor(cls){
+  return {PUBLIC:'<span class="badge b-public">PUBLIC</span>',INTERNAL:'<span class="badge b-internal">INTERNAL</span>',CONFIDENTIAL:'<span class="badge b-confidential">CONFIDENTIAL</span>'}[cls]||esc(cls);
+}
+function decisionBadge(d){
+  return d==='ALLOW' ? '<span class="badge b-allow">✓ ALLOW</span>' : '<span class="badge b-block">✕ BLOCK</span>';
+}
+
+function toast(type,title,msg){
+  const colors={success:'#22C55E',error:'#EF4444',warn:'#F59E0B',info:'#3B82F6'};
+  const icons={success:'<svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>',
+    error:'<svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>',
+    warn:'<svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+    info:'<svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>'};
+  const el=document.createElement('div');
+  el.className='toast '+type;
+  el.style.borderLeftColor=colors[type];
+  el.innerHTML=icons[type]+'<div><b>'+esc(title)+'</b>'+(msg?'<span class="t">'+esc(msg)+'</span>':'')+'</div>';
+  $('#toasts').appendChild(el);
+  setTimeout(()=>{el.classList.add('hide');setTimeout(()=>el.remove(),260)},4200);
+}
+
+/* ---------------- Modal ---------------- */
+function openModal(title,html){
+  $('#modalTitle').textContent=title;
+  $('#modalBody').innerHTML=html;
+  $('#modalOverlay').classList.add('show');
+}
+function closeModal(){ $('#modalOverlay').classList.remove('show'); }
+$('#modalClose').onclick=closeModal;
+$('#modalOk').onclick=closeModal;
+$('#modalOverlay').addEventListener('click',e=>{if(e.target===$('#modalOverlay'))closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+function policyChecksHtml(checks){
+  return '<div class="section-label">Individual Policy Checks</div>'+checks.map(c=>{
+    const st=c[1]==='pass'?ICONS.check+'<span style="color:#4ADE80">PASS</span>':c[1]==='fail'?ICONS.x+'<span style="color:#F87171">FAIL</span>':ICONS.skip+'<span style="color:#94A3B8">N/A</span>';
+    return '<div class="policy-check"><span class="st">'+(c[1]==='pass'?ICONS.check:c[1]==='fail'?ICONS.x:ICONS.skip)+'</span><div><b>'+esc(c[0])+'</b> <span style="font-size:.68rem;font-weight:700;margin-left:6px">'+st+'</span><span class="why">'+esc(c[2])+'</span></div></div>';
+  }).join('');
+}
+
+/* ---------------- Navigation ---------------- */
+const PAGE_TITLES={overview:'Overview',actions:'Action Monitor',policies:'Security Policies',resources:'Protected Resources',infoflow:'Information Flow',workflows:'Workflow History',audit:'Audit Logs',testing:'Testing & Verification',settings:'Settings'};
+function showPage(id,silent){
+  $$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+id));
+  $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===id));
+  $('#pageTitle').textContent=PAGE_TITLES[id];
+  $('#crumbCurrent').textContent=PAGE_TITLES[id];
+  window.scrollTo({top:0,behavior:'smooth'});
+  closeSidebarMobile();
+  if(!silent)toast('info','Navigated','Switched to '+PAGE_TITLES[id]);
+}
+$$('.nav-item').forEach(n=>n.onclick=()=>showPage(n.dataset.page,true));
+$$('[data-goto]').forEach(b=>b.onclick=()=>showPage(b.dataset.goto));
+
+/* Sidebar mobile */
+const sidebar=$('#sidebar'),overlay=$('#sidebarOverlay');
+function closeSidebarMobile(){sidebar.classList.remove('open');overlay.classList.remove('show')}
+$('#hamburger').onclick=()=>{sidebar.classList.toggle('open');overlay.classList.toggle('show')};
+overlay.onclick=closeSidebarMobile;
+
+/* ---------------- Clock ---------------- */
+function tick(){
+  const d=new Date();
+  $('#clockTime').textContent=d.toLocaleTimeString('en-GB');
+  $('#clockDate').textContent=d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+}
+tick();setInterval(tick,1000);
+
+/* ---------------- Notifications ---------------- */
+function renderNotifs(){
+  $('#notifList').innerHTML=NOTIFS.map(n=>{
+    const ic=n.type==='block'?['ic-red',ICONS.x]:n.type==='ok'?['ic-green',ICONS.check]:['ic-amber','<svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>'];
+    return '<div class="notif-item"><div class="ic '+ic[0]+'">'+ic[1]+'</div><div>'+esc(n.text)+'<div class="t">'+esc(n.t)+'</div></div></div>';
+  }).join('');
+}
+renderNotifs();
+$('#notifBtn').onclick=e=>{e.stopPropagation();$('#notifPanel').classList.toggle('show')};
+document.addEventListener('click',e=>{if(!$('#notifPanel').contains(e.target))$('#notifPanel').classList.remove('show')});
+$('#notifClear').onclick=()=>{$('#notifCount').style.display='none';renderNotifs();$('#notifList').innerHTML='<div class="empty" style="padding:24px">All notifications read.</div>';toast('success','Notifications cleared')};
+
+/* ---------------- Global search ---------------- */
+$('#globalSearch').addEventListener('input',e=>{
+  const q=e.target.value.trim();
+  const page=$$('.page').find(p=>p.classList.contains('active')).id.replace('page-','');
+  if(page==='actions'){$('#actSearch').value=q;renderActions()}
+  else if(page==='resources'){$('#resSearch').value=q;renderResources()}
+  else if(page==='audit'){$('#auditSearch').value=q;renderAudit()}
+  else if(q){showPage('actions');$('#actSearch').value=q;renderActions()}
+});
+
+/* ---------------- Overview ---------------- */
+function renderStats(){
+  const allow=ACTIONS.filter(a=>a.decision==='ALLOW').length,block=ACTIONS.length-allow;
+  const stats=[
+    {v:ACTIONS.length,l:'Total Actions',h:'Evaluated in last 24 h',ic:'ic-blue',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>'},
+    {v:allow,l:'Authorized Actions',h:Math.round(allow/ACTIONS.length*100)+'% approval rate',ic:'ic-green',svg:ICONS.check.replace('#22C55E','currentColor').replace('stroke-width="3"','stroke-width="2.5"')},
+    {v:block,l:'Blocked Actions',h:'Protected tools never executed',ic:'ic-red',svg:ICONS.x.replace('#EF4444','currentColor').replace('stroke-width="3"','stroke-width="2.5"')},
+    {v:1,l:'Active Workflows',h:'1 completed · 1 blocked',ic:'ic-violet',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 6h6a3 3 0 0 1 3 3v6"/></svg>'},
+    {v:RESOURCES.length,l:'Protected Resources',h:'Under gateway control',ic:'ic-blue',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'},
+    {v:4,l:'Security Violations',h:'All blocked before execution',ic:'ic-amber',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>'}
+  ];
+  $('#statCards').innerHTML=stats.map(s=>'<div class="stat"><div class="ic '+s.ic+'">'+s.svg+'</div><div class="val">'+s.v+'</div><div class="lbl">'+s.l+'</div><div class="hint">'+s.h+'</div></div>').join('');
+}
+
+function renderFlow(){
+  const steps=[
+    {t:'USER REQUEST',s:'Priya / App',ic:'ic-blue',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>'},
+    {t:'AI ACTION PROPOSAL',s:'Agent Atlas',ic:'ic-violet',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M12 7V4M8 13h.01M16 13h.01"/></svg>'},
+    {t:'AGENTGATE POLICY CHECK',s:'Sole decision point',ic:'',gateway:true,svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/></svg>'},
+    {t:'ALLOW / BLOCK',s:'Policy decision',ic:'ic-amber',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 3v18M17 3v18M3 7h8M13 17h8"/></svg>'},
+    {t:'PROTECTED TOOL EXECUTION',s:'Only after ALLOW',ic:'ic-green',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'},
+    {t:'AUDIT LOG',s:'Tamper-evident',ic:'ic-blue',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M10 9h4M10 13h4"/></svg>'}
+  ];
+  $('#flowViz').innerHTML=steps.map((s,i)=>
+    '<div class="flow-step '+(s.gateway?'gateway':'')+'"><div class="fi '+(s.gateway?'ic-blue':s.ic)+'" '+(s.gateway?'style="background:rgba(59,130,246,.25)"':'')+'>'+s.svg+'</div><b>'+s.t+'</b><small>'+s.s+'</small></div>'
+  ).join('<div class="flow-arrow">'+ICONS.arrow+'</div>');
+}
+
+function renderRecent(){
+  $('#recentEvents').innerHTML=AUDIT.slice(0,5).map(e=>
+    '<tr><td><div class="cell-title" style="font-size:.8rem">'+esc(e.action)+'</div><div class="cell-sub mono">'+esc(e.id)+' · '+esc(e.timestamp)+'</div></td><td style="text-align:right">'+decisionBadge(e.decision)+'</td></tr>').join('');
+  $('#recentWorkflows').innerHTML=WORKFLOWS.map(w=>
+    '<div class="status-row"><b>'+esc(w.name)+'<div class="t mono">'+esc(w.id)+' · '+esc(w.actions)+' actions</div></b><span class="badge b-'+w.status.toLowerCase()+'">'+esc(w.status.toUpperCase())+'</span></div>').join('');
+}
+
+function renderProtection(){
+  const items=[
+    ['Gateway','Operational','green','Uptime 99.98% · v2.4.1'],
+    ['Policy Engine','Operational','green','26 rules active · 0.4 ms avg decision'],
+    ['Database','Operational','green','Connections healthy'],
+    ['Protected Tools','Operational','green','5 resources under control'],
+    ['Audit Logging','Operational','green','Tamper-evident chain verified']
+  ];
+  $('#protectionStatus').innerHTML=items.map(i=>
+    '<div class="status-row"><span class="dot"></span><b>'+i[0]+'</b><span class="t">'+i[3]+'</span><span class="badge b-allow">'+i[1]+'</span></div>').join('');
+}
+
+/* ---------------- Charts ---------------- */
+function setupCanvas(cv){
+  const dpr=window.devicePixelRatio||1,box=cv.parentElement.getBoundingClientRect();
+  cv.width=box.width*dpr;cv.height=box.height*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  return {ctx,w:box.width,h:box.height};
+}
+function drawActivityChart(){
+  const cv=$('#activityChart');if(!cv.parentElement.offsetWidth)return;
+  const {ctx,w,h}=setupCanvas(cv);
+  const allowed=[8,12,9,15,11,18,14,10,16,13,19,15,12,17];
+  const blocked =[2,3,1,4,2,5,3,2,4,3,6,4,3,5];
+  const pad=28,max=Math.max(...allowed.map((v,i)=>v+blocked[i]))+4;
+  const bw=(w-pad*2)/14;
+  ctx.clearRect(0,0,w,h);
+  ctx.strokeStyle='#263449';ctx.lineWidth=1;ctx.font='10px JetBrains Mono';ctx.fillStyle='#64748B';
+  for(let g=0;g<=4;g++){
+    const y=h-24-(h-52)*g/4;
+    ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(w-pad/2,y);ctx.stroke();
+    ctx.fillText(Math.round(max*g/4),4,y+3);
+  }
+  for(let i=0;i<14;i++){
+    const x=pad+i*bw+bw*0.18,cw=bw*0.64;
+    const aH=(h-52)*allowed[i]/max,bH=(h-52)*blocked[i]/max;
+    const gA=ctx.createLinearGradient(0,h-24-aH,0,h-24);gA.addColorStop(0,'#3B82F6');gA.addColorStop(1,'rgba(59,130,246,.35)');
+    ctx.fillStyle=gA;ctx.beginPath();ctx.roundRect(x,h-24-aH,cw,aH-2,[4,4,0,0]);ctx.fill();
+    const gB=ctx.createLinearGradient(0,h-24-aH-bH,0,h-24-aH);gB.addColorStop(0,'#EF4444');gB.addColorStop(1,'rgba(239,68,68,.4)');
+    ctx.fillStyle=gB;ctx.beginPath();ctx.roundRect(x,h-24-aH-bH,cw,bH,[4,4,0,0]);ctx.fill();
+    if(i%2===0){ctx.fillStyle='#64748B';ctx.fillText('D'+(i+1),x+cw/2-6,h-8)}
+  }
+}
+function drawDecisionChart(){
+  const cv=$('#decisionChart');if(!cv.parentElement.offsetWidth)return;
+  const {ctx,w,h}=setupCanvas(cv);
+  const allow=ACTIONS.filter(a=>a.decision==='ALLOW').length,block=ACTIONS.length-allow,total=ACTIONS.length;
+  const cx=w/2,cy=h/2-6,r=Math.min(w,h)/2-34;
+  ctx.clearRect(0,0,w,h);
+  let angle=-Math.PI/2;
+  [[allow,'#22C55E'],[block,'#EF4444']].forEach(([v,c])=>{
+    const a=v/total*Math.PI*2;
+    ctx.beginPath();ctx.arc(cx,cy,r,angle,angle+a-0.03);ctx.strokeStyle=c;ctx.lineWidth=26;ctx.lineCap='butt';ctx.stroke();
+    angle+=a;
+  });
+  ctx.fillStyle='#F8FAFC';ctx.font='800 26px Inter';ctx.textAlign='center';
+  ctx.fillText(Math.round(allow/total*100)+'%',cx,cy+2);
+  ctx.font='11px Inter';ctx.fillStyle='#94A3B8';ctx.fillText('authorized',cx,cy+20);
+  ctx.font='600 11px JetBrains Mono';ctx.textAlign='left';
+  ctx.fillStyle='#22C55E';ctx.fillText(allow+' ALLOW',cx-r-6,cy+r+24);
+  ctx.fillStyle='#EF4444';ctx.fillText(block+' BLOCK',cx+r-34,cy+r+24);
+}
+window.addEventListener('resize',()=>{drawActivityChart();drawDecisionChart()});
+
+/* ---------------- Action Monitor ---------------- */
+let actSort={key:'timestamp',dir:-1};
+function filteredActions(){
+  const q=$('#actSearch').value.trim().toLowerCase();
+  const d=$('#actDecision').value,o=$('#actOperation').value,s=$('#actSensitivity').value;
+  let list=ACTIONS.filter(a=>
+    (!q||[a.id,a.user,a.resource,a.recipient].join(' ').toLowerCase().includes(q))&&
+    (!d||a.decision===d)&&(!o||a.operation===o)&&(!s||a.sensitivity===s));
+  list.sort((x,y)=>{
+    const k=actSort.key;
+    const vx=x[k],vy=y[k];
+    return (vx<vy?-1:vx>vy?1:0)*actSort.dir;
+  });
+  return list;
+}
+function renderActions(){
+  const list=filteredActions();
+  $('#actionsBody').innerHTML=list.map(a=>'<tr>'+
+    '<td class="cell-title mono">'+esc(a.id)+'</td>'+
+    '<td>'+esc(a.user)+'</td>'+
+    '<td><span class="badge b-neutral">'+esc(a.operation)+'</span></td>'+
+    '<td class="mono" style="font-size:.78rem">'+esc(a.resource)+'</td>'+
+    '<td style="font-size:.78rem;color:var(--text2)">'+esc(a.recipient)+'</td>'+
+    '<td>'+badgeFor(a.sensitivity)+'</td>'+
+    '<td>'+decisionBadge(a.decision)+'</td>'+
+    '<td class="mono" style="font-size:.74rem;color:var(--text2)">'+esc(a.timestamp)+'</td>'+
+    '<td><button class="btn btn-sm" data-act="'+esc(a.id)+'">View Details</button></td></tr>').join('');
+  $('#actionsEmpty').style.display=list.length?'none':'block';
+  $('#actCount').textContent=list.length+' of '+ACTIONS.length+' actions';
+  $$('[data-act]').forEach(b=>b.onclick=()=>openActionDetails(b.dataset.act));
+  $$('th.sortable').forEach(th=>{
+    const active=th.dataset.sort===actSort.key;
+    th.innerHTML=th.textContent.replace(/ [▲▼]$/,'')+(active?' <span class="arr">'+(actSort.dir===1?'▲':'▼')+'</span>':'');
+  });
+}
+$$('#page-actions th.sortable').forEach(th=>th.onclick=()=>{
+  const k=th.dataset.sort;
+  actSort.dir=actSort.key===k?-actSort.dir:1;
+  actSort.key=k;renderActions();
+});
+['actSearch','actDecision','actOperation','actSensitivity'].forEach(id=>{
+  $('#'+id).addEventListener(id==='actSearch'?'input':'change',renderActions);
+});
+function openActionDetails(id){
+  const a=ACTIONS.find(x=>x.id===id);if(!a)return;
+  const verdict=a.decision==='ALLOW'
+    ?'<div class="verdict allowed show" style="margin-top:0"><span>'+ICONS.check+'</span><div><b>Final decision: ALLOW.</b> All applicable policies passed. The protected tool was authorized to execute under supervision.</div></div>'
+    :'<div class="verdict blocked show" style="margin-top:0"><span>'+ICONS.x+'</span><div><b>Final decision: BLOCK.</b> One or more policies failed. No protected tool executed; the request was recorded in the audit log.</div></div>';
+  openModal('Action '+a.id,
+    '<div class="section-label">Action Request</div>'+
+    '<div class="kv"><span class="k">Action ID</span><span class="v mono">'+esc(a.id)+'</span></div>'+
+    '<div class="kv"><span class="k">Requesting identity</span><span class="v">'+esc(a.user)+'</span></div>'+
+    '<div class="kv"><span class="k">Requested operation</span><span class="v"><span class="badge b-neutral">'+esc(a.operation)+'</span></span></div>'+
+    '<div class="kv"><span class="k">Target resource</span><span class="v mono">'+esc(a.resource)+'</span></div>'+
+    '<div class="kv"><span class="k">Recipient authorization</span><span class="v" style="font-size:.78rem">'+esc(a.recipient)+'</span></div>'+
+    '<div class="kv"><span class="k">Information sensitivity</span><span class="v">'+badgeFor(a.sensitivity)+'</span></div>'+
+    '<div class="kv"><span class="k">Timestamp</span><span class="v mono" style="font-size:.78rem">'+esc(a.timestamp)+'</span></div>'+
+    policyChecksHtml(a.checks)+
+    '<div class="section-label">Gateway Explanation</div>'+
+    '<p style="font-size:.82rem;color:var(--text2)">'+esc(a.reason)+'</p>'+
+    verdict);
+}
+
+/* ---------------- Policies ---------------- */
+function renderPolicies(){
+  $('#policyCategories').innerHTML=POLICY_CATEGORIES.map((cat,ci)=>
+    '<div class="card" style="margin-bottom:18px"><div class="card-head"><h3>'+esc(cat.name)+'</h3><div class="sub">'+esc(cat.desc)+'</div></div><div class="card-body"><div class="pol-grid">'+
+    cat.items.map((p,pi)=>
+      '<div class="pol-card"><div class="pol-top"><div class="ic ic-'+cat.color+'">'+ICONS.shield+'</div><div><h4>'+esc(p.name)+'</h4><small class="mono">'+esc(p.id)+'</small></div></div><p>'+esc(p.detail)+'</p><div class="pol-foot">'+
+      '<label class="switch"><input type="checkbox" '+(p.on?'checked':'')+' data-pol="'+ci+'-'+pi+'"><span class="slider"></span></label>'+
+      '<span class="badge '+(p.on?'b-allow':'b-block')+'" id="polBadge-'+ci+'-'+pi+'">'+(p.on?'ENFORCED':'DISABLED')+'</span>'+
+      '<button class="btn btn-sm" style="margin-left:auto" data-poldetail="'+ci+'-'+pi+'">Details</button>'+
+      '</div></div>').join('')+
+    '</div></div></div>').join('');
+  $$('[data-pol]').forEach(inp=>inp.onchange=()=>{
+    const [ci,pi]=inp.dataset.pol.split('-').map(Number);
+    POLICY_CATEGORIES[ci].items[pi].on=inp.checked;
+    $('#polBadge-'+ci+'-'+pi).className='badge '+(inp.checked?'b-allow':'b-block');
+    $('#polBadge-'+ci+'-'+pi).textContent=inp.checked?'ENFORCED':'DISABLED';
+    const p=POLICY_CATEGORIES[ci].items[pi];
+    if(inp.checked)toast('success','Policy enabled',p.name+' is now enforced (simulation)');
+    else toast('warn','Policy disabled',p.name+' would no longer be enforced (simulation)');
+  });
+  $$('[data-poldetail]').forEach(b=>b.onclick=()=>{
+    const [ci,pi]=b.dataset.poldetail.split('-').map(Number);
+    const cat=POLICY_CATEGORIES[ci],p=cat.items[pi];
+    openModal('Policy '+p.id,
+      '<div class="section-label">'+esc(cat.name)+'</div>'+
+      '<div class="kv"><span class="k">Policy ID</span><span class="v mono">'+esc(p.id)+'</span></div>'+
+      '<div class="kv"><span class="k">Name</span><span class="v">'+esc(p.name)+'</span></div>'+
+      '<div class="kv"><span class="k">Status</span><span class="v"><span class="badge '+(p.on?'b-allow':'b-block')+'">'+(p.on?'ENFORCED':'DISABLED')+'</span></span></div>'+
+      '<div class="kv"><span class="k">Category</span><span class="v">'+esc(cat.name)+'</span></div>'+
+      '<div class="section-label">Rule Description</div><p style="font-size:.83rem;color:var(--text2)">'+esc(p.detail)+'</p>');
+  });
+}
+
+/* ---------------- Resources ---------------- */
+function filteredResources(){
+  const q=$('#resSearch').value.trim().toLowerCase(),c=$('#resClass').value,s=$('#resStatus').value;
+  return RESOURCES.filter(r=>(!q||[r.name,r.owner,r.type].join(' ').toLowerCase().includes(q))&&(!c||r.classification===c)&&(!s||r.status===s));
+}
+function renderResources(){
+  const list=filteredResources();
+  $('#resourcesBody').innerHTML=list.map(r=>'<tr>'+
+    '<td class="cell-title mono" style="font-size:.8rem">'+esc(r.name)+'</td>'+
+    '<td style="color:var(--text2)">'+esc(r.type)+'</td>'+
+    '<td>'+esc(r.owner)+'</td>'+
+    '<td>'+badgeFor(r.classification)+'</td>'+
+    '<td style="font-size:.75rem;color:var(--text2)">'+r.allowed.map(esc).join(', ')+'</td>'+
+    '<td>'+r.operations.map(o=>'<span class="badge b-neutral" style="margin-right:3px">'+o+'</span>').join('')+'</td>'+
+    '<td class="mono" style="font-size:.74rem;color:var(--text2)">'+esc(r.modified)+'</td>'+
+    '<td><span class="badge b-active">'+esc(r.status)+'</span></td>'+
+    '<td><button class="btn btn-sm" data-res="'+esc(r.id)+'">Details</button></td></tr>').join('');
+  $('#resourcesEmpty').style.display=list.length?'none':'block';
+  $('#resCount').textContent=list.length+' of '+RESOURCES.length+' resources';
+  $$('[data-res]').forEach(b=>b.onclick=()=>{
+    const r=RESOURCES.find(x=>x.id===b.dataset.res);
+    openModal('Resource '+r.id,
+      '<div class="section-label">Resource Details</div>'+
+      '<div class="kv"><span class="k">Resource name</span><span class="v mono">'+esc(r.name)+'</span></div>'+
+      '<div class="kv"><span class="k">Type</span><span class="v">'+esc(r.type)+'</span></div>'+
+      '<div class="kv"><span class="k">Owner</span><span class="v">'+esc(r.owner)+'</span></div>'+
+      '<div class="kv"><span class="k">Classification</span><span class="v">'+badgeFor(r.classification)+'</span></div>'+
+      '<div class="kv"><span class="k">Allowed users</span><span class="v" style="font-size:.78rem;text-align:right">'+r.allowed.map(esc).join(', ')+'</span></div>'+
+      '<div class="kv"><span class="k">Allowed operations</span><span class="v">'+r.operations.join(', ')+'</span></div>'+
+      '<div class="kv"><span class="k">Last modified</span><span class="v mono" style="font-size:.78rem">'+esc(r.modified)+'</span></div>'+
+      '<div class="kv"><span class="k">Status</span><span class="v">'+esc(r.status)+'</span></div>'+
+      '<div class="section-label">Classification Information</div><p style="font-size:.82rem;color:var(--text2)">'+esc(r.desc)+'</p>');
+  });
+}
+['resSearch','resClass','resStatus'].forEach(id=>{
+  $('#'+id).addEventListener(id==='resSearch'?'input':'change',renderResources);
+});
+
+/* ---------------- Information Flow ---------------- */
+function renderInfoflow(){
+  const nodes=[
+    {t:'financial_report.txt',s:'Source document · <span class="badge b-confidential">CONFIDENTIAL</span>',cls:''},
+    {t:'AI Summarization',s:'Agent Atlas · supervised operation',cls:''},
+    {t:'financial_summary.txt',s:'Derived artifact · <span class="badge b-confidential">CONFIDENTIAL (inherited)</span>',cls:'artifact'},
+    {t:'SQLite Storage',s:'Artifact persisted with provenance · ART-2211',cls:'store'},
+    {t:'Workflow Resumption',s:'WF-001 · labels restored from saved state',cls:'store'},
+    {t:'Delivery Authorization Check',s:'Recipient policy evaluated by gateway',cls:'check'}
+  ];
+  $('#iflowViz').innerHTML=nodes.map((n,i)=>
+    '<div class="iflow-node '+n.cls+'"><b>'+esc(n.t)+'</b><small>'+n.s+'</small></div>'
+  ).join('<div class="iflow-varrow">'+ICONS.arrowDown+'</div>');
+  $('#provenanceDetails').innerHTML=
+    '<div class="kv"><span class="k">Source document</span><span class="v mono" style="font-size:.78rem">financial_report.txt</span></div>'+
+    '<div class="kv"><span class="k">Source classification</span><span class="v">'+badgeFor('CONFIDENTIAL')+'</span></div>'+
+    '<div class="kv"><span class="k">Derived artifact</span><span class="v mono" style="font-size:.78rem">financial_summary.txt</span></div>'+
+    '<div class="kv"><span class="k">Derived classification</span><span class="v">'+badgeFor('CONFIDENTIAL')+'</span></div>'+
+    '<div class="kv"><span class="k">Artifact ID</span><span class="v mono">ART-2211</span></div>'+
+    '<div class="kv"><span class="k">Workflow ID</span><span class="v mono">WF-001</span></div>'+
+    '<div class="kv"><span class="k">Created</span><span class="v mono" style="font-size:.78rem">2026-10-28 10:06:37</span></div>'+
+    '<div class="kv"><span class="k">Relationship</span><span class="v" style="font-size:.76rem">Summarization of RES-03</span></div>';
+}
+$('#downgradeBtn').onclick=()=>{
+  const v=$('#downgradeVerdict');
+  v.classList.toggle('show');
+  if(v.classList.contains('show')){
+    toast('error','Declassification blocked','CONFIDENTIAL → PUBLIC rejected by policy DEC-01');
+    $('#downgradeBtn').innerHTML=ICONS.arrow+' Hide verdict';
+  } else {
+    $('#downgradeBtn').innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg> Attempt CONFIDENTIAL → PUBLIC';
+  }
+};
+
+/* ---------------- Workflows ---------------- */
+let selectedWf=null;
+function renderWorkflows(){
+  $('#workflowsBody').innerHTML=WORKFLOWS.map(w=>'<tr>'+
+    '<td class="cell-title mono">'+esc(w.id)+'</td>'+
+    '<td>'+esc(w.name)+'</td>'+
+    '<td class="mono" style="font-size:.74rem;color:var(--text2)">'+esc(w.created)+'</td>'+
+    '<td class="mono" style="font-size:.74rem;color:var(--text2)">'+esc(w.last)+'</td>'+
+    '<td><span class="badge b-'+w.status.toLowerCase()+'">'+esc(w.status.toUpperCase())+'</span></td>'+
+    '<td>'+w.actions+'</td>'+
+    '<td>'+badgeFor(w.classification)+'</td>'+
+    '<td><button class="btn btn-sm" data-wf="'+esc(w.id)+'">View Workflow</button></td></tr>').join('');
+  $$('[data-wf]').forEach(b=>b.onclick=()=>openWorkflowDetails(b.dataset.wf));
+  $('#wfPick').innerHTML=WORKFLOWS.map(w=>
+    '<button class="wf-opt" data-wfpick="'+esc(w.id)+'"><div><b style="font-size:.85rem">'+esc(w.name)+'</b><div style="font-size:.7rem;color:var(--text2)" class="mono">'+esc(w.id)+' · saved checkpoint available</div></div><div class="meta">'+badgeFor(w.classification)+'<span class="badge b-'+w.status.toLowerCase()+'">'+esc(w.status.toUpperCase())+'</span></div></button>').join('');
+  $$('[data-wfpick]').forEach(btn=>btn.onclick=()=>{
+    selectedWf=btn.dataset.wfpick;
+    $$('[data-wfpick]').forEach(x=>x.classList.toggle('selected',x===btn));
+    $('#resumeBtn').disabled=false;
+    $('#unauthDeliverBtn').disabled=true;
+    $('#resumeOutput').innerHTML='';
+    toast('info','Workflow selected',selectedWf+' ready to resume');
+  });
+}
+function openWorkflowDetails(id){
+  const w=WORKFLOWS.find(x=>x.id===id);if(!w)return;
+  openModal('Workflow '+w.id,
+    '<div class="section-label">Workflow Summary</div>'+
+    '<div class="kv"><span class="k">Workflow name</span><span class="v">'+esc(w.name)+'</span></div>'+
+    '<div class="kv"><span class="k">Workflow ID</span><span class="v mono">'+esc(w.id)+'</span></div>'+
+    '<div class="kv"><span class="k">Created</span><span class="v mono" style="font-size:.78rem">'+esc(w.created)+'</span></div>'+
+    '<div class="kv"><span class="k">Last activity</span><span class="v mono" style="font-size:.78rem">'+esc(w.last)+'</span></div>'+
+    '<div class="kv"><span class="k">Status</span><span class="v"><span class="badge b-'+w.status.toLowerCase()+'">'+esc(w.status.toUpperCase())+'</span></span></div>'+
+    '<div class="kv"><span class="k">Security classification</span><span class="v">'+badgeFor(w.classification)+'</span></div>'+
+    '<div class="section-label">Source Documents</div>'+w.sources.map(s=>'<div class="policy-check"><span class="st">'+ICONS.check+'</span><div><b class="mono" style="font-size:.78rem">'+esc(s)+'</b></div></div>').join('')+
+    '<div class="section-label">Generated Reports &amp; Artifacts</div>'+w.artifacts.map(s=>'<div class="policy-check"><span class="st">'+ICONS.check+'</span><div><b class="mono" style="font-size:.78rem">'+esc(s)+'</b></div></div>').join('')+
+    '<div class="section-label">Previous Actions &amp; Provenance</div><ul class="wf-steps">'+w.history.map((h,i)=>'<li><span class="wf-dot" style="background:rgba(59,130,246,.15);color:#60A5FA">'+(i+1)+'</span>'+esc(h)+'</li>').join('')+'</ul>'+
+    '<div class="section-label">Saved State &amp; Resumption</div><p style="font-size:.82rem;color:var(--text2)">Checkpoint stores the security classification <b style="color:var(--text)">'+w.classification+'</b>, full provenance history and source links. On resumption the gateway restores these labels before any new action is evaluated.</p>');
+}
+$('#resumeBtn').onclick=()=>{
+  const w=WORKFLOWS.find(x=>x.id===selectedWf);if(!w)return;
+  const btn=$('#resumeBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Restoring state…';
+  $('#resumeOutput').innerHTML='<div class="card" style="margin-top:4px"><div class="card-body"><ul class="wf-steps" id="resumeSteps"></ul></div></div>';
+  const steps=[
+    ['ok','Workflow '+w.id+' selected for resumption'],
+    ['ok','Saved state restored — security classification '+w.classification+' reapplied'],
+    ['ok','Provenance history restored: '+w.history.length+' previous actions reloaded'],
+    ['info','Gateway ready — new proposals will be evaluated against restored labels']
+  ];
+  let i=0;
+  const ul=$('#resumeSteps');
+  const t=setInterval(()=>{
+    if(i>=steps.length){
+      clearInterval(t);
+      btn.disabled=false;btn.innerHTML=ICONS.arrow+' Resume Workflow';
+      $('#unauthDeliverBtn').disabled=false;
+      toast('success','Workflow resumed',w.id+' security labels restored');
+      return;
+    }
+    const s=steps[i++];
+    const li=document.createElement('li');
+    li.innerHTML='<span class="wf-dot" style="background:'+(s[0]==='ok'?'rgba(34,197,94,.15)':'rgba(59,130,246,.15)')+';color:'+(s[0]==='ok'?'#4ADE80':'#60A5FA')+'">'+(s[0]==='ok'?'✓':'»')+'</span><span>'+esc(s[1])+'</span>';
+    ul.appendChild(li);
+  },700);
+};
+$('#unauthDeliverBtn').onclick=()=>{
+  const w=WORKFLOWS.find(x=>x.id===selectedWf)||WORKFLOWS[0];
+  const out=$('#resumeOutput').querySelector('.card .card-body')||$('#resumeOutput');
+  const div=document.createElement('div');
+  div.className='verdict blocked show';
+  div.style.marginTop='12px';
+  div.innerHTML=ICONS.x+'<div><b>BLOCKED by AGENTGATE.</b><span style="display:block;margin-top:3px;font-size:.78rem">Unauthorized delivery attempt on resumed workflow '+w.id+' was rejected. Restored classification '+w.classification+' still applies — security restrictions survived workflow resumption. Decision written to audit log.</span></div>';
+  out.appendChild(div);
+  toast('error','Delivery blocked','Resumed workflow '+w.id+' retains its security classification');
+};
+
+/* ---------------- Audit Logs ---------------- */
+function filteredAudit(){
+  const q=$('#auditSearch').value.trim().toLowerCase(),d=$('#auditDecision').value,f=$('#auditFrom').value,t=$('#auditTo').value;
+  return AUDIT.filter(e=>{
+    if(q&&![e.id,e.user,e.action,e.resource,e.recipient,e.reason].join(' ').toLowerCase().includes(q))return false;
+    if(d&&e.decision!==d)return false;
+    const day=e.timestamp.slice(0,10);
+    if(f&&day<f)return false;
+    if(t&&day>t)return false;
+    return true;
+  });
+}
+function renderAudit(){
+  const list=filteredAudit();
+  $('#auditBody').innerHTML=list.map(e=>'<tr>'+
+    '<td class="cell-title mono" style="font-size:.78rem">'+esc(e.id)+'</td>'+
+    '<td>'+esc(e.user)+'</td>'+
+    '<td>'+esc(e.action)+'</td>'+
+    '<td class="mono" style="font-size:.75rem">'+esc(e.resource)+'</td>'+
+    '<td style="font-size:.75rem;color:var(--text2)">'+esc(e.recipient)+'</td>'+
+    '<td>'+decisionBadge(e.decision)+'</td>'+
+    '<td style="font-size:.76rem;color:var(--text2);max-width:260px">'+esc(e.reason)+'</td>'+
+    '<td class="mono" style="font-size:.72rem;color:var(--text2)">'+esc(e.timestamp)+'</td>'+
+    '<td><button class="btn btn-sm" data-audit="'+esc(e.id)+'">View</button></td></tr>').join('');
+  $('#auditEmpty').style.display=list.length?'none':'block';
+  $('#auditCount').textContent=list.length+' of '+AUDIT.length+' events';
+  $$('[data-audit]').forEach(b=>b.onclick=()=>{
+    const e=AUDIT.find(x=>x.id===b.dataset.audit);
+    openModal('Audit Event '+e.id,
+      '<div class="section-label">Event Record</div>'+
+      '<div class="kv"><span class="k">Event ID</span><span class="v mono">'+esc(e.id)+'</span></div>'+
+      '<div class="kv"><span class="k">User identity</span><span class="v">'+esc(e.user)+'</span></div>'+
+      '<div class="kv"><span class="k">Requested action</span><span class="v">'+esc(e.action)+'</span></div>'+
+      '<div class="kv"><span class="k">Target resource</span><span class="v mono" style="font-size:.78rem">'+esc(e.resource)+'</span></div>'+
+      '<div class="kv"><span class="k">Recipient</span><span class="v" style="font-size:.78rem">'+esc(e.recipient)+'</span></div>'+
+      '<div class="kv"><span class="k">Gateway decision</span><span class="v">'+decisionBadge(e.decision)+'</span></div>'+
+      '<div class="kv"><span class="k">Timestamp</span><span class="v mono" style="font-size:.78rem">'+esc(e.timestamp)+'</span></div>'+
+      '<div class="section-label">Decision Reason</div><p style="font-size:.83rem;color:var(--text2)">'+esc(e.reason)+'</p>'+
+      '<p style="font-size:.72rem;color:#64748B;margin-top:12px">Record is append-only and tamper-evident (hash-chained). Demonstration data.</p>');
+  });
+}
+['auditSearch','auditDecision','auditFrom','auditTo'].forEach(id=>{
+  $('#'+id).addEventListener(id==='auditSearch'?'input':'change',renderAudit);
+});
+$('#exportCsvBtn').onclick=()=>{
+  const list=filteredAudit();
+  if(!list.length){toast('warn','Nothing to export','No events match the current filters');return}
+  const head=['Event ID','User','Requested Action','Resource','Recipient','Decision','Reason','Timestamp'];
+  const rows=list.map(e=>[e.id,e.user,e.action,e.resource,e.recipient,e.decision,e.reason,e.timestamp]);
+  const csv=[head,...rows].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='agentgate_audit_log.csv';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('success','CSV exported',list.length+' audit events downloaded');
+};
+
+/* ---------------- Testing ---------------- */
+const testState=TESTS.map(()=>null);
+function renderTestSummary(){
+  const passed=testState.filter(r=>r==='pass').length,failed=testState.filter(r=>r==='fail').length,ran=passed+failed;
+  $('#testSummary').innerHTML=[
+    ['Total Tests',TESTS.length,'ic-blue'],
+    ['Passed',passed,'ic-green'],
+    ['Failed',failed,failed?'ic-red':'ic-green'],
+    ['Pending',TESTS.length-ran,'ic-amber']
+  ].map(s=>'<div class="card" style="padding:14px 16px"><div class="stat" style="padding:0;box-shadow:none;border:none;background:none"><div class="ic '+s[2]+'" style="width:32px;height:32px;margin-bottom:8px">'+(s[0]==='Passed'?ICONS.check.replace('#22C55E','currentColor').replace('stroke-width="3"','stroke-width="2.5"'):s[0]==='Failed'?ICONS.x.replace('#EF4444','currentColor').replace('stroke-width="3"','stroke-width="2.5"'):ICONS.shield)+'</div><div class="val" style="font-size:1.5rem">'+s[1]+'</div><div class="lbl">'+s[0]+'</div></div></div>').join('');
+}
+function renderTests(){
+  $('#testCards').innerHTML=TESTS.map((t,i)=>{
+    const r=testState[i];
+    const badge=r==='pass'?'<span class="badge b-allow">✓ PASSED</span>':r==='fail'?'<span class="badge b-block">✕ FAILED</span>':r==='run'?'<span class="badge b-warn">RUNNING…</span>':'<span class="badge b-neutral">PENDING</span>';
+    return '<div class="test-card '+(r==='pass'?'pass':r==='fail'?'fail':r==='run'?'running':'')+'" id="test-'+i+'">'+
+      '<div class="num">'+(i+1)+'</div>'+
+      '<div><b>'+esc(t.name)+'</b><small>'+esc(t.desc)+'</small><small style="color:#64748B;margin-top:4px">Expected: '+esc(t.expect)+(r==='pass'?' · Executed at '+new Date().toLocaleTimeString('en-GB'):'')+'</small></div>'+
+      '<div class="res">'+badge+'</div></div>';
+  }).join('');
+  renderTestSummary();
+}
+renderTests();
+$('#runTestsBtn').onclick=async()=>{
+  const btn=$('#runTestsBtn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Running…';
+  $('#testsStatus').textContent='Executing test suite…';
+  testState.fill(null);renderTests();
+  for(let i=0;i<TESTS.length;i++){
+    testState[i]='run';renderTests();
+    $('#testProgress').style.width=((i)/TESTS.length*100)+'%';
+    await new Promise(r=>setTimeout(r,520));
+    testState[i]='pass';renderTests();
+  }
+  $('#testProgress').style.width='100%';
+  btn.disabled=false;btn.innerHTML=ICONS.arrow+' Run Tests';
+  $('#testsStatus').textContent=TESTS.length+'/'+TESTS.length+' passed · Completed at '+new Date().toLocaleTimeString('en-GB');
+  toast('success','Test suite complete','All '+TESTS.length+' frontend simulations passed');
+  setTimeout(()=>{$('#testProgress').style.width='0'},1600);
+};
+
+/* ---------------- Settings ---------------- */
+function renderSettings(){
+  $('#gatewayConfig').innerHTML=[
+    ['Decision mode','Deny-by-default, explicit allow'],
+    ['Policy rules active','26'],
+    ['Avg decision latency','0.4 ms'],
+    ['Provenance store','SQLite · hash-chained'],
+    ['Audit retention','365 days'],
+    ['Gateway version','2.4.1 (enterprise)']
+  ].map(r=>'<div class="kv"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>').join('');
+  $$('[data-pref]').forEach(inp=>inp.onchange=()=>{
+    toast(inp.checked?'success':'info','Preference '+(inp.checked?'enabled':'disabled'),'Saved locally in this browser session only');
+  });
+}
+
+/* ---------------- Init ---------------- */
+function init(){
+  renderStats();renderFlow();renderRecent();renderProtection();
+  drawActivityChart();drawDecisionChart();
+  renderActions();renderPolicies();renderResources();renderInfoflow();renderWorkflows();renderAudit();
+  renderSettings();
+  toast('info','AGENTGATE ready','AI proposes. AGENTGATE decides. Tools execute only after authorization.');
+}
+document.addEventListener('DOMContentLoaded',init);
+if(document.readyState!=='loading')init();
+</script>
+</body>
+</html>
+
