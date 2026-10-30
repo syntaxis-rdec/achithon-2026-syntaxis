@@ -12,7 +12,9 @@ from pathlib import Path
 import pytest
 
 from agentgate import proposer, tools
+from agentgate.gateway import Session
 from agentgate.models import ActionRequest
+from agentgate.store import Store
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -514,3 +516,100 @@ def test_fenced_json_reply_is_accepted(session, state, policies, model_config):
 
     assert proposal.backend == "model"
     assert proposal.actions[0].resource_id == "doc-004"
+
+
+# -- command line ----------------------------------------------------------
+
+
+@pytest.fixture()
+def cli_db(tmp_path, policies):
+    path = tmp_path / "cli.sqlite"
+    store = Store(path)
+    store.load_documents_from_dir(ROOT / "data" / "documents")
+    session = Session(store, policies, "analyst", "human")
+    decision, report_id = session.submit(
+        ActionRequest(tool="save_report", source_ids=["doc-001"]))
+    assert decision.allowed
+    store.close()
+    return path, report_id
+
+
+def _run_cli(arguments, db, env_extra=None):
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.startswith("AGENTGATE_MODEL_")}
+    environment.update(env_extra or {})
+    return subprocess.run(
+        [sys.executable, "-m", "agentgate.proposer", *arguments, "--db", str(db)],
+        cwd=ROOT, env=environment, capture_output=True, text=True, timeout=60)
+
+
+def test_cli_prints_the_proposal_and_the_gateway_block(cli_db):
+    db, _ = cli_db
+
+    result = _run_cli(["send the revenue brief to vendor@outside.example",
+                       "--actor", "analyst"], db)
+
+    assert result.returncode == 0, result.stderr
+    assert "Backend: scripted" in result.stdout
+    assert "deliver_inbox" in result.stdout
+    assert "BLOCKED RULE-RECIPIENT-NOT-PERMITTED" in result.stdout
+    assert "vendor@outside.example" in result.stdout
+    store = Store(db)
+    assert store.list_outbox() == []
+    store.close()
+
+
+def test_cli_refuses_unknown_phrasing(tmp_path):
+    db = tmp_path / "fresh.sqlite"
+
+    result = _run_cli(["make me a sandwich", "--actor", "analyst"], db)
+
+    assert result.returncode == 2, result.stderr
+    assert "Refused:" in result.stdout
+    assert "nothing was submitted" in result.stdout
+    assert "registered 4 documents" in result.stdout
+
+
+def test_cli_points_at_the_command_that_creates_a_report(tmp_path):
+    db = tmp_path / "fresh.sqlite"
+
+    result = _run_cli(["send the revenue brief to vendor@outside.example",
+                       "--actor", "analyst"], db)
+
+    assert result.returncode == 2, result.stderr
+    assert "no saved report" in result.stdout
+    assert 'summarise doc-001' in result.stdout
+
+
+def test_cli_executes_an_allowed_proposal_through_the_gateway(cli_db):
+    db, report_id = cli_db
+
+    result = _run_cli([f"send {report_id} to manager@corp.example", "--actor", "analyst"], db)
+
+    assert result.returncode == 0, result.stderr
+    assert "ALLOWED SEND-ANALYST" in result.stdout
+    store = Store(db)
+    assert [row["recipient"] for row in store.list_outbox()] == ["manager@corp.example"]
+    store.close()
+
+
+def test_cli_never_prints_the_model_key(cli_db):
+    db, _ = cli_db
+
+    result = _run_cli(
+        ["read doc-004", "--actor", "analyst"], db,
+        {"AGENTGATE_MODEL_BASE_URL": "not-a-url", "AGENTGATE_MODEL_KEY": "sk-cli-secret"})
+
+    assert result.returncode == 0, result.stderr
+    assert "Backend: scripted" in result.stdout
+    assert "ALLOWED READ-ANALYST" in result.stdout
+    assert "sk-cli-secret" not in result.stdout + result.stderr
+
+
+def test_cli_rejects_an_actor_that_is_only_a_recipient(cli_db):
+    db, _ = cli_db
+
+    result = _run_cli(["read doc-004", "--actor", "vendor@outside.example"], db)
+
+    assert result.returncode == 3
+    assert "not an actor" in result.stderr

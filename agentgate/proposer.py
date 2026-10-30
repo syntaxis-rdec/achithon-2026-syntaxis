@@ -9,9 +9,11 @@ deterministic policy engine. Identity written in the sentence is discarded.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
+import sys
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -547,3 +549,81 @@ def _field_list(names, limit: int = 4) -> str:
 def _short(text: str, limit: int = 90) -> str:
     collapsed = " ".join(str(text).split())
     return collapsed if len(collapsed) <= limit else collapsed[:limit - 3] + "..."
+
+
+# -- command line ----------------------------------------------------------
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="python -m agentgate.proposer",
+        description="Propose tool actions from one sentence, then let the gateway decide.")
+    parser.add_argument("sentence", help="the sentence to interpret")
+    parser.add_argument("--actor", default="agent-assistant",
+                        help="actor whose session proposes (default: agent-assistant)")
+    parser.add_argument("--db", default=str(ROOT / "data" / "agentgate-v3.sqlite"),
+                        help="state file to read and audit (default: the dashboard database)")
+    args = parser.parse_args(argv)
+
+    from .gateway import Session
+    from .policy import load_policy_set
+    from .store import Store
+
+    try:
+        store = Store(args.db)
+    except Exception as error:
+        print(f"Cannot open state file '{args.db}': {error}", file=sys.stderr)
+        return 3
+
+    try:
+        seeded = 0
+        if not store.list_documents():
+            seeded = store.load_documents_from_dir(ROOT / "data" / "documents")
+        policies = load_policy_set(ROOT / "data" / "principals.json",
+                                   ROOT / "data" / "policies.json")
+        principal = policies.principal(args.actor)
+        if principal is None or principal.kind == "recipient":
+            print(f"Refused: '{args.actor}' is not an actor in the directory.",
+                  file=sys.stderr)
+            return 3
+        if seeded:
+            print(f"State {args.db} was empty; registered {seeded} documents.")
+
+        session = Session(store, policies, args.actor, origin="agent")
+        proposal = propose(args.sentence, session=session, state=store, policies=policies)
+        print(f"Sentence: {args.sentence}")
+        print(f"Backend: {proposal.backend}")
+        if proposal.refusal:
+            print(proposal.refusal)
+            print("Gateway: nothing was submitted. A refusal is not an authorisation.")
+            if "report" in proposal.refusal.lower():
+                print("Hint: create one first with: "
+                      f'python -m agentgate.proposer --db "{args.db}" '
+                      '--actor analyst "summarise doc-001"')
+            return 2
+
+        print("Proposal:")
+        for action in proposal.actions:
+            print("  - " + _describe(action))
+        print(f"Gateway decisions (state {args.db}, policy {policies.fingerprint}):")
+        for action in proposal.actions:
+            decision, result = session.submit(action)
+            verdict = "ALLOWED" if decision.allowed else "BLOCKED"
+            print(f"  {verdict} {decision.rule_id}: {decision.reason}")
+            if result is not None:
+                print(f"    result: {result}")
+        return 0
+    finally:
+        store.close()
+
+
+def _describe(action: ActionRequest) -> str:
+    target = action.resource_id or ",".join(action.source_ids) or "-"
+    line = f"{action.tool} {target}"
+    if action.recipient:
+        line += f" to {action.recipient}"
+    return f"{line} (actor={action.actor_id}, origin={action.origin})"
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
