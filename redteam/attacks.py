@@ -17,7 +17,7 @@ from agentgate import tools, workflow
 from agentgate.gateway import Session, declassify
 from agentgate.models import ActionRequest, Decision, Document
 from agentgate.policy import load_policy_set
-from agentgate.policy_guard import Guard
+from agentgate.policy_guard import Guard, unadopted_rows
 from agentgate.sessions import SessionRegistry
 from agentgate.store import Store
 
@@ -74,6 +74,10 @@ class Arena:
         """The operator's explicit adopt, exactly as the dashboard does it."""
         self.policies = self.registry.reload_rulebook(TOKEN)
         return self.policies
+
+    def close(self) -> None:
+        """Windows keeps an open SQLite file locked, so an arena is closed on purpose."""
+        self.store.close()
 
     def tighten(self, rule_id: str, max_classification: str) -> str:
         """Rewrite the rulebook on disk: an operator change, or an attacker with file access."""
@@ -330,10 +334,11 @@ def forge_a_workflow_step_reference(arena: Arena) -> Result:
                   f"status={report['status']} inbox={len(arena.store.list_outbox())}")
 
 
-def resume_ignores_the_policy_pin(arena: Arena) -> Result:
-    """18. The guard pins the rulebook a Session loaded, but `workflow.resume` builds its own
-    guardless Session and re-reads disk. So an unadopted edit to both files is honoured on the
-    next resume and audited as authorised. Expected safe: refuse with RULE-POLICY-DRIFT."""
+def resume_checks_the_policy_pin(arena: Arena) -> Result:
+    """18. `workflow.resume` now takes the guard, so an unadopted rulebook edit stops the run.
+
+    This was LF-1: the same edit that used to let an intern read a CONFIDENTIAL document and
+    audit it as authorised now produces RULE-POLICY-DRIFT instead."""
     wf = workflow.create(arena.store, [
         ActionRequest(actor_id="intern", tool="read_document", resource_id="doc-001")],
         title="drifted resume")
@@ -341,18 +346,39 @@ def resume_ignores_the_policy_pin(arena: Arena) -> Result:
     arena.store.set_step(wf, 0, "pending", "reset: the rulebook changed under us")
     arena.grant("intern", "RESTRICTED")
     arena.tighten("READ-INTERN", "RESTRICTED")
+    second = workflow.resume(arena.store, wf, arena.principals_file, arena.policies_file,
+                             arena.guard)
+    latest = [row for row in arena.store.list_audit() if row["tool"] == "read_document"][0]
+    safe = (first["steps"][0]["status"] == "blocked"
+            and latest["rule_id"] == "RULE-POLICY-DRIFT" and not latest["allowed"])
+    return Result("resume_checks_the_policy_pin", safe,
+                  f"before={first['steps'][0]['rule_id']} after={latest['rule_id']} "
+                  f"allowed={latest['allowed']} status={second['status']}")
+
+
+def decisions_under_an_unadopted_rulebook_are_findable(arena: Arena) -> Result:
+    """19. The mitigation for any path that still forgets the guard: the trail gives it away.
+
+    Every audit row stamps the rulebook hash it was decided with, so a resume that skips the
+    guard is not invisible. This attack runs the guardless path on purpose and requires the
+    detector to name it."""
+    wf = workflow.create(arena.store, [
+        ActionRequest(actor_id="intern", tool="read_document", resource_id="doc-001")],
+        title="unguarded resume")
+    workflow.resume(arena.store, wf, arena.principals_file, arena.policies_file)
+    arena.store.set_step(wf, 0, "pending", "reset for the unguarded run")
+    arena.grant("intern", "RESTRICTED")
+    arena.tighten("READ-INTERN", "RESTRICTED")
     workflow.resume(arena.store, wf, arena.principals_file, arena.policies_file)
 
-    reads = [row for row in arena.store.list_audit() if row["tool"] == "read_document"]
-    latest = reads[0]
-    safe = first["steps"][0]["status"] == "blocked" and not latest["allowed"]
-    return Result("resume_ignores_the_policy_pin", safe,
-                  f"before={first['steps'][0]['rule_id']} after={latest['rule_id']} "
-                  f"allowed={latest['allowed']} drift_denied=False")
+    rows = unadopted_rows(arena.store, arena.guard)
+    granted = [row for row in rows if row["rule_id"] == "READ-INTERN" and row["allowed"]]
+    return Result("decisions_under_an_unadopted_rulebook_are_findable", bool(granted),
+                  f"unadopted rows={len(rows)}, grants={len(granted)}")
 
 
 def mint_a_forged_document(arena: Arena) -> Result:
-    """19. The guard pins the two rulebook files. A *new* document dropped into the folder
+    """20. The guard pins the two rulebook files. A *new* document dropped into the folder
     after the pin is registered trusted on sight: integrity ok, readable at its own declared
     label. Expected safe, proposed not shipped: a document that appears mid-session needs an
     explicit adopt, the same way a rulebook change now does."""
@@ -386,10 +412,12 @@ ATTACKS = [
     act_as_a_recipient,
     act_as_an_unknown_actor,
     forge_a_workflow_step_reference,
-    resume_ignores_the_policy_pin,
+    resume_checks_the_policy_pin,
+    decisions_under_an_unadopted_rulebook_are_findable,
     mint_a_forged_document,
 ]
 
-# Kept, not softened: documented in team/makhdum/REPORT-2.md as live findings and run under
-# xfail(strict), so the suite is honest today and fails loudly the day either one is fixed.
-LIVE_FINDINGS = ["resume_ignores_the_policy_pin", "mint_a_forged_document"]
+# Kept, not softened: documented in team/makhdum/REPORT-2.md as a live finding and run under
+# xfail(strict), so the suite fails loudly the moment it is fixed. LF-1 left this list when
+# `workflow.resume` started taking a guard; attacks 18 and 19 now hold the door and the alarm.
+LIVE_FINDINGS = ["mint_a_forged_document"]

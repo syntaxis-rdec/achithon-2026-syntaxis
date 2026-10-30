@@ -59,8 +59,13 @@ def _chain(request: ActionRequest, outputs: dict[int, str]) -> ActionRequest:
 
 
 def resume(state, workflow_id: str, principals_path: str | Path,
-           policies_path: str | Path) -> dict[str, Any]:
-    """Run the workflow from the first step that is not done."""
+           policies_path: str | Path, guard=None) -> dict[str, Any]:
+    """Run the workflow from the first step that is not done.
+
+    With a `guard`, every step is decided under the rulebook the operator actually adopted:
+    a rulebook swapped on disk since the pin stops the run with RULE-POLICY-DRIFT instead of
+    quietly re-deciding an old proposal under rules nobody accepted.
+    """
     policies = load_policy_set(principals_path, policies_path)
     steps = state.steps_for(workflow_id)
     payload = state.get_workflow(workflow_id)["payload"]
@@ -74,7 +79,7 @@ def resume(state, workflow_id: str, principals_path: str | Path,
             continue
 
         request = _chain(ActionRequest(**step["request"]), outputs)
-        session = Session(state, policies, request.actor_id, request.origin)
+        session = Session(state, policies, request.actor_id, request.origin, guard)
         decision, result = session.submit(request, workflow_id=workflow_id,
                                           step_index=step["idx"])
 

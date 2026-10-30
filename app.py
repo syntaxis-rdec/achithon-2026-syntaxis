@@ -22,7 +22,7 @@ from agentgate import tools, workflow
 from agentgate.gateway import declassify
 from agentgate.models import ActionRequest, PolicySet
 from agentgate.policy import load_policy_set
-from agentgate.policy_guard import Guard
+from agentgate.policy_guard import Guard, unadopted_rows
 from agentgate.sessions import SessionRegistry
 from agentgate.store import Store
 
@@ -35,6 +35,7 @@ PRINCIPALS = DATA / "principals.json"
 POLICIES_FILE = DATA / "policies.json"
 DOCS_DIR = DATA / "documents"
 DEMO_STATE = DATA / "demo_seed.json"
+REDTEAM_REPORT = ROOT / "redteam" / "results.json"
 # The only credential that lets an adopted rulebook change what the gateway allows.
 # Unset means the pin can never be moved: demo/swap_policy.py alone will not do it.
 RELOAD_TOKEN = os.environ.get("AGENTGATE_RELOAD_TOKEN")
@@ -112,6 +113,32 @@ else:
                 st.session_state["pinned_policies"] = fresh
                 st.success(f"Adopted `{fresh.fingerprint}`. Reload history: {guard.reloads}")
                 st.rerun()
+
+with st.expander("Guard status · red-team board"):
+    mode = ("pinned across clicks — a rulebook swapped between clicks is refused"
+            if PIN_RULEBOOK else "re-pinned on every render — the swap demo runs as scripted")
+    st.markdown(f"- **Mode**: {mode}\n"
+                f"- **Pin** `{guard.recorded}` · **disk** `{policies.fingerprint}` · "
+                f"**enforced** `{adopted.fingerprint}`\n"
+                f"- **Adoptions this session**: {len(guard.reloads) or 'none'}"
+                + "".join(f"\n  - `{old}` → `{new}`" for old, new in guard.reloads[-3:]))
+    if PIN_RULEBOOK:
+        ghosts = unadopted_rows(state, guard)
+        if ghosts:
+            st.warning(f"{len(ghosts)} audit row(s) were decided with a rulebook this session never "
+                       "adopted. The stamp is `policy_hash`; the guard would have refused them.")
+        else:
+            st.caption("Nothing in this trail was decided under an unadopted rulebook.")
+    if REDTEAM_REPORT.exists():
+        board = json.loads(REDTEAM_REPORT.read_text(encoding="utf-8"))
+        st.markdown(f"**Red team** · {board['refused_or_safe']}/{board['attacks']} attacks held"
+                    + (f" · open findings: {', '.join(board['open_findings'])}"
+                       if board["open_findings"] else " · none open"))
+        for row in board["results"]:
+            if not row["safe"]:
+                st.caption(f"OPEN · {row['attack']} · {row['detail']}")
+    else:
+        st.caption("Run `python -m redteam --json` to refresh the attack board.")
 
 left, middle, right = st.columns([1, 1.2, 1])
 
@@ -200,7 +227,8 @@ with middle:
                                      key="release_justification")
         if st.button("Release"):
             try:
-                child = declassify(state, policies, actor, target_id, target_level, justification)
+                child = declassify(state, adopted, actor, target_id, target_level,
+                                   justification, guard)
                 st.success(f"Created {child.id} at {child.label.classification}. Original untouched.")
             except (PermissionError, ValueError) as error:
                 st.error(f"Refused: {error}. The attempt is in the audit trail.")
@@ -341,7 +369,7 @@ with viewer:
                        "Reload with the operator token first.")
         if st.button("Resume", key="wf_resume", disabled=drift is not None):
             st.session_state["wf_report"] = workflow.resume(state, chosen, PRINCIPALS,
-                                                            POLICIES_FILE)
+                                                            POLICIES_FILE, guard)
             st.rerun()
 
         result = st.session_state.get("wf_report")

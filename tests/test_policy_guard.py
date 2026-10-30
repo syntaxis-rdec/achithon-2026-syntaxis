@@ -16,7 +16,7 @@ import pytest
 from agentgate.gateway import Session
 from agentgate.models import ActionRequest
 from agentgate.policy import load_policy_set
-from agentgate.policy_guard import Guard, PolicyDrift, fingerprint
+from agentgate.policy_guard import Guard, PolicyDrift, fingerprint, unadopted_rows
 from agentgate.sessions import SessionRegistry
 from agentgate.store import Store
 
@@ -198,3 +198,56 @@ def test_the_dashboard_refuses_a_rulebook_swapped_between_clicks(tmp_path, monke
     assert at.error == []
     adopted = Store(data / "agentgate-v3.sqlite").list_audit()[0]
     assert adopted["rule_id"] == "POLICY-RELOAD" and adopted["allowed"] == 1
+
+
+def test_a_vanished_rulebook_is_refused_not_crashed(tmp_path, rulebook):
+    """A deleted file is a denial, not a traceback in the middle of a decision."""
+    principals, policies_file = rulebook
+    store = Store(tmp_path / "gone.sqlite")
+    store.load_documents_from_dir(ROOT / "data" / "documents")
+    policies = load_policy_set(principals, policies_file)
+    session = Session(store, policies, "intern", "human", Guard(principals, policies_file))
+
+    allowed, _ = session.submit(ActionRequest(tool="read_document", resource_id="doc-002"))
+    assert allowed.allowed
+
+    policies_file.unlink()
+    decision, result = session.submit(ActionRequest(tool="read_document", resource_id="doc-002"))
+    assert not decision.allowed and result is None
+    assert decision.rule_id == "RULE-POLICY-DRIFT" and "unreadable" in decision.reason
+    assert store.list_audit()[0]["rule_id"] == "RULE-POLICY-DRIFT"
+
+
+def test_a_malformed_rulebook_cannot_be_adopted(tmp_path, rulebook):
+    """The token is not enough: the file the operator points at has to parse."""
+    principals, policies_file = rulebook
+    guard = Guard(principals, policies_file, token=TOKEN)
+    before = guard.recorded
+    policies_file.write_text("{ not json", encoding="utf-8")
+
+    with pytest.raises(PermissionError):
+        guard.reload(TOKEN)
+    assert guard.recorded == before and guard.reloads == []
+
+
+def test_the_detector_names_a_decision_made_off_the_pin(tmp_path, rulebook):
+    """Anything that forgets the guard still leaves its hash on the row, so it is findable."""
+    principals, policies_file = rulebook
+    store = Store(tmp_path / "ghosts.sqlite")
+    store.load_documents_from_dir(ROOT / "data" / "documents")
+    guard = Guard(principals, policies_file, token=TOKEN)
+    pinned = load_policy_set(principals, policies_file)
+
+    Session(store, pinned, "intern", "human", guard).submit(
+        ActionRequest(tool="read_document", resource_id="doc-002"))
+    assert unadopted_rows(store, guard) == []
+
+    rules = json.loads(policies_file.read_text(encoding="utf-8"))
+    rules[0]["max_classification"] = "RESTRICTED"
+    policies_file.write_text(json.dumps(rules), encoding="utf-8")
+    drifted = load_policy_set(principals, policies_file)
+    Session(store, drifted, "intern", "human").submit(
+        ActionRequest(tool="read_document", resource_id="doc-002"))
+
+    ghosts = unadopted_rows(store, guard)
+    assert len(ghosts) == 1 and ghosts[0]["policy_hash"] == drifted.fingerprint
