@@ -192,4 +192,8 @@ def api_snapshot():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Port and host are configurable so a test, or a presenter with port 5000 already taken, can
+    # still run the evidence server. The dashboard iframe assumes 5000, so that stays the default.
+    app.run(host=os.environ.get("AGENTGATE_WEB_HOST", "0.0.0.0"),
+            port=int(os.environ.get("AGENTGATE_WEB_PORT", "5000")),
+            debug=False)
