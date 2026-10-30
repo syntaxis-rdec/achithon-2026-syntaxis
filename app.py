@@ -282,8 +282,12 @@ with viewer:
                            "Why": step["reason"][:110] or "not attempted yet"}
                           for step in steps]),
             hide_index=True, height=160)
-        st.caption(f"Rulebook on disk right now: `{policies.fingerprint}`")
-        if st.button("Resume", key="wf_resume"):
+        st.caption(f"Rulebook on disk right now: `{policies.fingerprint}` · "
+                   f"pinned `{guard.recorded}`")
+        if drift is not None:
+            st.warning("Resume is closed while the rulebook on disk differs from the pin. "
+                       "Reload with the operator token first.")
+        if st.button("Resume", key="wf_resume", disabled=drift is not None):
             st.session_state["wf_report"] = workflow.resume(state, chosen, PRINCIPALS,
                                                             POLICIES_FILE)
             st.rerun()
