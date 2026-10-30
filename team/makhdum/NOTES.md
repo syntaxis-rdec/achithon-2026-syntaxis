@@ -307,6 +307,15 @@ template are canonical; only the bare-`eyJ` JWT redaction rule was ported from m
 `AGENTGATE_PIN_DOCUMENTS`) because the stage demo swaps the rulebook and tampers with a document on
 purpose. `AGENTGATE_*` switches, the rehearsal and the export are documented in `docs/RUN.md`.
 
+## One claim that was not true (fixed in the same pass)
+
+`README.md` said outgoing proposals "are scanned" against canary honeytokens. They are not: `canary`
+appears nowhere in `gateway.py`, `tools.py`, `policy.py`, `workflow.py` or `app.py` — it is a library
+with 25 tests and no call site. The README now says that, and the same for the proposer (CLI and 63
+tests, no dashboard surface). Rewording the claim was the right call over silently wiring the feature:
+what a canary hit should *do* (refuse, allow-and-flag, refuse-and-relabel) is a product decision for
+Tanush, and a security claim a judge can check in five minutes should not be left optimistic.
+
 ## Ready to merge (task 5)
 
 - `agentgate/policy_guard.py`, `agentgate/gateway.py`, `app.py`, `redteam/*`, 4 new test files,

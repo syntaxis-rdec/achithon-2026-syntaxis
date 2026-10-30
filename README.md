@@ -126,11 +126,14 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
      $$\text{EntryHash}_i = \text{SHA256}(\text{CanonicalFields}_i \parallel \text{EntryHash}_{i-1})$$
    - Genesis link: $\text{EntryHash}_0 = \text{"0"}^{64}$.
    - Verified via `verify_audit_chain(store)` — any modification, reordering, or deletion of past audit rows is mathematically detectable.
-4. **Active Canary Traps & Paraphrase Exfiltration Traps (`agentgate/canary.py`)**:
-   - Generates distinct honeytokens (`CANARY-{doc_id}-{suffix}`) embedded into sensitive content.
-   - Outgoing tool proposals (emails, report bodies) are scanned against canary tokens associated with all documents in the actor's read history.
-   - Detects both verbatim token leaks and semantic paraphrase disclosures.
-5. **Time-of-Check to Time-of-Use (TOCTOU) Workflow Resumption**:
+4. **Canary Traps & Paraphrase Exfiltration Detection (`agentgate/canary.py`) — library, not yet in the request path**:
+   - Generates distinct honeytokens (`CANARY-{doc_id}-{suffix}`) and scans text for verbatim leaks and semantic paraphrase disclosure.
+   - Covered by 25 tests. **Not currently invoked by `gateway.Session.submit`, `tools.deliver_inbox` or the dashboard**, so no live decision is made or blocked on a canary today. Wiring it into the delivery step is a one-call change (`agentgate/canary.py` → `tools.py`/`gateway.py`) that needs a decision on what happens when a token is found: refuse, allow-and-flag, or refuse-and-relabel.
+   - Claiming it as active here would be the kind of sentence a security judge reads once and checks in five minutes.
+5. **AI proposer (`agentgate/proposer.py`) — CLI and 63 tests, no dashboard surface**:
+   - `python -m agentgate.proposer` turns a sentence into zero-authority proposals; see `docs/PROPOSER.md`.
+   - It is not reachable from the Streamlit page, so the stage demo does not show natural-language proposals.
+6. **Time-of-Check to Time-of-Use (TOCTOU) Workflow Resumption**:
    - Workflow state records *ordered proposals*, not granted permissions.
    - `workflow.resume()` re-evaluates the active policy rulebook on disk for each pending step.
    - If `AGENTGATE_PIN_RULEBOOK=1` is enabled and policies are modified without supplying `AGENTGATE_RELOAD_TOKEN`, resumption immediately aborts with `RULE-POLICY-DRIFT`.
