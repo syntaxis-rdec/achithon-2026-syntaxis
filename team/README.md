@@ -6,7 +6,7 @@ work lands, so neither lane edits `agentgate/` internals, `app.py`, or `benchmar
 | Person | Lane | Folder | Branch |
 |---|---|---|---|
 | Makhdum | Task 2 in progress: policy integrity guard + red-team harness | `team/makhdum/` (`TASK-2.md`) | `lane/makhdum` |
-| Aryan | Frontend in `web/` — do not touch `app.py`. Still owes `docs/SUBMISSION.md` | `team/aryan/` (`TASK-FRONTEND.md`) | `lane/aryan` |
+| Aryan | Original lane: audit export and submission packaging. He pushes when ready; review afterwards | `team/aryan/` (`README.md`) | `lane/aryan` |
 | Tanush | Gateway, dashboard, evidence, resumption, AI proposer | `docs/`, `agentgate/`, `app.py` | `main`, `work/*` |
 
 `main` belongs to Tanush. Never commit or push to `main`. Work only on your lane branch.
