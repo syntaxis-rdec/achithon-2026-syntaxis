@@ -138,15 +138,25 @@ trusted on sight (LF-2). Both are `xfail(strict)` in `tests/test_redteam.py`.
   policies_path, guard=None)` and pass it to the `Session` it constructs at `workflow.py:77`.
   Without it the resume path decides against disk bytes nobody adopted, which is LF-1. `app.py` will
   hand it the registry's guard as soon as the signature allows it. Not in my allowed edit list.
-- `benchmark/` — a drift scenario would make the evidence table cover the guard. Currently the
-  benchmark runs guardless by design, so 32/32 says nothing about drift.
-- `docs/RUN.md` — the dashboard reload now needs `AGENTGATE_RELOAD_TOKEN`; the run guide does not
-  mention it, and unset means the operator cannot adopt a rulebook at all.
-- `README.md:43` still says `pytest # 42 tests`. It is 106 passing with 2 strict xfails now.
+- **`docs/DEMO_SCRIPT.md` / `docs/DEMO_RUNSHEET.md` — one sentence each.** Under
+  `AGENTGATE_PIN_RULEBOOK=1` the presenter must type the reload token after
+  `python demo/swap_policy.py tighten`; in the default mode nothing changes. The script currently
+  promises the swap lands on the next click, which is only true unpinned.
+- **`docs/RUN.md`** — the dashboard now reads two env vars: `AGENTGATE_RELOAD_TOKEN` (unset means
+  the pin can never be moved) and `AGENTGATE_PIN_RULEBOOK`. Neither is documented.
+- `benchmark/` — a drift scenario would make the evidence table cover the guard. The benchmark runs
+  guardless by design, so 32/32 says nothing about drift.
+- `README.md:43` still says `pytest # 42 tests`. It is 123 passing with 2 strict xfails now.
 
 ## Ready to merge (task 2)
 
-- Commits `043f262`, `088c85f`, `d86ee28`, `c035d48` plus the report commit.
-- `pytest` — **106 passed, 2 xfailed**. All 76 pre-existing tests still green, untouched.
-- `python -m benchmark.runner` — 32/32, 0 unauthorized, 0 false allows. `benchmark.mutations` — all
-  six detected. `benchmark/` and `agentgate/store.py` schema not edited.
+- Commits `043f262` (guard + gateway), `088c85f` (dashboard gate), `d86ee28` (adopt/refuse audit
+  trail + unit tests), `c035d48` (harness), `8789fcd` (report), `0e97818` (merge of main, app.py and
+  log.txt conflicts resolved), then the follow-up docs/test commit.
+- `pytest` — **123 passed, 2 xfailed**. Every test that existed before this lane is green with its
+  expectations unedited, including the 499 lines of `tests/test_demo_beats.py` merged from main.
+- `python -m benchmark.runner` — 32/32, 0 unauthorized, 0 false allows, 0 false denies.
+  `benchmark.mutations` — all six detected. `benchmark/` and `agentgate/store.py` schema untouched.
+- Task 2's own done-means, item by item: attack 12 denies with `RULE-POLICY-DRIFT` and audits; the
+  harness has 21 named attacks; the pin moves only through `reload_rulebook(token)`; every turn is
+  in `log.txt`.

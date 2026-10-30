@@ -77,15 +77,41 @@ own rulebook hash is unchanged after the whole run. Plus nine direct unit tests 
 
 ## Evidence
 
-- `pytest` — **106 passed, 2 xfailed** (76 existing tests unchanged and green, +9 guard unit tests,
-  +23 red-team tests including the two strict xfails).
+- `pytest` — **123 passed, 2 xfailed** against merged `main` (`4d34945`, which added the demo
+  seeder, swap tool and 499 lines of `tests/test_demo_beats.py`). Every pre-existing test is green
+  and none of their expectations were edited. My lane adds 9 guard unit tests, 23 red-team tests and
+  the 33 task-1 injection tests.
 - Attack 12 fails closed with `RULE-POLICY-DRIFT` and leaves an audit row — the task's explicit
   done-means, asserted in `redteam.attacks.swap_the_rulebook_mid_session`.
-- `python -m benchmark.runner` — 32/32, 0 unauthorized executions, 0 false allows, 0 false denies.
-- `python -m benchmark.mutations` — all six detected.
-- Two things I did **not** claim: the dashboard changes were compile-checked and unit-tested, but
-  not exercised in a browser; and `agentgate/workflow.py` was not edited because it is outside the
-  allowed list, which is why LF-1 is a finding instead of a fix.
+- The dashboard path is tested, not assumed: `test_the_dashboard_refuses_a_rulebook_swapped_between_clicks`
+  renders the real `app.py` through Streamlit's own `AppTest`, swaps `policies.json` between two
+  renders, asserts the drift banner, then drives the reload form twice — a wrong token is refused
+  and audited as `RULE-POLICY-RELOAD-REFUSED`, the right token adopts and audits `POLICY-RELOAD`.
+- `python -m benchmark.runner` — 32/32, 0 unauthorized executions, 0 false allows, 0 false denies,
+  32/32 audit rows. `python -m benchmark.mutations` — all six detected.
+- `benchmark/` untouched (including `results.json`, restored after every run), `agentgate/store.py`
+  schema untouched, no existing test file edited. Not exercised in an actual browser.
+
+## What the merge forced me to decide
+
+Tanush's demo beat is: `python demo/swap_policy.py tighten`, click the dashboard, watch the next
+decision use the tightened rulebook. That is the exact convenience TASK-2 told me to close — "good
+for demos and terrible for security". His `tests/test_demo_beats.py` asserts the swapped fingerprint
+appears on screen mid-session, so a permanent pin in `app.py` would have broken 499 lines of green
+tests and the presentation script at the same time.
+
+The resolution keeps both, and it is a switch rather than a compromise on enforcement:
+
+- **`AGENTGATE_PIN_RULEBOOK=1`** — the pin taken on the first render survives reruns. A rulebook
+  swapped between clicks is refused under `RULE-POLICY-DRIFT`, decisions are made with the last
+  *adopted* rulebook, and only the operator token moves the pin.
+- **Unset (default)** — every render re-pins what is on disk, so the scripted beat lands unchanged.
+  The guard still refuses for any session that outlives a rerun, which is the model an agent runtime
+  actually uses, and that is what attacks 12, 12b and 12c exercise.
+
+His per-run-registry fix (a SQLite handle must not outlive the thread that opened it) is preserved;
+only the pin, which is two paths and a hash, lives across reruns. `app.py` shows which mode it is in,
+so nobody presents one believing it is the other.
 
 ## Still open
 
@@ -100,6 +126,13 @@ own rulebook hash is unchanged after the whole run. Plus nine direct unit tests 
   the audit row is the durable record, the list is not.
 - The trust boundary is unchanged and still worth saying out loud: whoever can write
   `data/policies.json` can also write `agentgate/policy_guard.py`.
+- `docs/DEMO_SCRIPT.md` and `docs/DEMO_RUNSHEET.md` still tell the presenter that a bare
+  `swap_policy.py tighten` lands on the next click. True in the default mode, false under
+  `AGENTGATE_PIN_RULEBOOK=1` — where the extra line is "then type the reload token". If the pinned
+  mode is what you want to show a judge, those two files need that one sentence, and they are his.
+- The pin defaults to off in the dashboard. That is a deliberate product call to avoid breaking the
+  scripted beat, not an accident, but it does mean the security story is opt-in until someone sets
+  the flag.
 
 ## With four more hours
 
