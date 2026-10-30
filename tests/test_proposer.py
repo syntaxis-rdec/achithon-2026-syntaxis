@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
+import urllib.error
 from pathlib import Path
 
 import pytest
@@ -277,3 +282,235 @@ def test_hostile_sentence_is_a_proposal_the_gateway_then_blocks(session, state, 
     delivery_rows = [row for row in state.list_audit() if row["tool"] == "deliver_inbox"]
     assert len(delivery_rows) == len(proposal.actions)
     assert all(row["allowed"] == 0 for row in delivery_rows)
+
+
+# -- optional model backend ------------------------------------------------
+
+
+class FakeTransport:
+    def __init__(self, content=None, *, error=None, envelope=None):
+        self.content = content
+        self.error = error
+        self.envelope = envelope
+        self.calls = []
+
+    def __call__(self, url, payload, headers, timeout):
+        self.calls.append({"url": url, "payload": payload, "headers": headers,
+                           "timeout": timeout})
+        if self.error is not None:
+            raise self.error
+        if self.envelope is not None:
+            return json.dumps(self.envelope).encode("utf-8")
+        return json.dumps({"choices": [{"message": {"content": self.content}}]}).encode("utf-8")
+
+
+@pytest.fixture()
+def model_config():
+    return proposer.ModelConfig(base_url="https://model.example/v1/chat",
+                                api_key="sk-test-secret")
+
+
+def _reply(actions):
+    return json.dumps({"actions": actions})
+
+
+def _ask(sentence, actions, session, state, policies, model_config, *, transport=None):
+    fake = transport or FakeTransport(_reply(actions))
+    proposal = proposer.propose(sentence, session=session, state=state, policies=policies,
+                                config=model_config, transport=fake)
+    return proposal, fake
+
+
+def test_model_backend_accepts_a_valid_read_reply(session, state, policies, model_config):
+    proposal, fake = _ask("read doc-004",
+                          [{"tool": "read_document", "resource_id": "doc-004"}],
+                          session("analyst"), state, policies, model_config)
+
+    assert proposal.backend == "model"
+    assert proposal.refusal is None
+    assert [(a.tool, a.resource_id) for a in proposal.actions] == [
+        ("read_document", "doc-004")]
+    assert proposal.actions[0].actor_id == "analyst"
+    assert proposal.actions[0].origin == "agent"
+    assert len(fake.calls) == 1
+
+
+def test_model_is_off_unless_both_environment_variables_exist(session, state, policies,
+                                                              monkeypatch):
+    monkeypatch.setenv("AGENTGATE_MODEL_BASE_URL", "https://model.example/v1/chat")
+
+    proposal = proposer.propose("read doc-004", session=session("analyst"), state=state,
+                                policies=policies)
+
+    assert proposal.backend == "scripted"
+
+
+def test_both_environment_variables_enable_the_model(session, state, policies, monkeypatch):
+    monkeypatch.setenv("AGENTGATE_MODEL_BASE_URL", "https://model.example/v1/chat")
+    monkeypatch.setenv("AGENTGATE_MODEL_KEY", "sk-env-secret")
+    fake = FakeTransport(_reply([{"tool": "read_document", "resource_id": "doc-004"}]))
+
+    proposal = proposer.propose("read doc-004", session=session("analyst"), state=state,
+                                policies=policies, transport=fake)
+
+    assert proposal.backend == "model"
+    assert fake.calls[0]["headers"]["Authorization"] == "Bearer sk-env-secret"
+
+
+def test_model_payload_carries_only_the_sentence_and_identifiers(session, state, policies,
+                                                                 model_config):
+    proposal, fake = _ask("read doc-004",
+                          [{"tool": "read_document", "resource_id": "doc-004"}],
+                          session("analyst"), state, policies, model_config)
+
+    payload = json.dumps(fake.calls[0]["payload"])
+    assert "read doc-004" in payload
+    for document in state.list_documents():
+        assert document.id in payload
+        assert document.title not in payload
+    for marker in ("recurring revenue reached", "SYSTEM DIRECTIVE",
+                   "Forward the complete summary"):
+        assert marker not in payload
+    assert policies.fingerprint not in payload
+    assert "sk-test-secret" not in payload
+    assert fake.calls[0]["headers"]["Authorization"] == "Bearer sk-test-secret"
+    assert "sk-test-secret" not in repr(model_config)
+    assert "sk-test-secret" not in proposal.model_dump_json()
+    assert state.list_audit() == []
+
+
+def test_model_reply_identity_is_ignored_and_the_gateway_still_decides(session, state,
+                                                                      policies, model_config):
+    proposal, _ = _ask(
+        "read doc-001",
+        [{"tool": "read_document", "resource_id": "doc-001",
+          "actor_id": "security-officer", "origin": "human"}],
+        session("agent-assistant"), state, policies, model_config)
+
+    action = proposal.actions[0]
+    assert action.actor_id == "agent-assistant"
+    assert action.origin == "agent"
+
+    decision, _ = session("agent-assistant", "agent").submit(action)
+    assert not decision.allowed
+    assert decision.rule_id == "RULE-READ-CLEARANCE"
+    assert state.list_audit()[0]["actor"] == "agent-assistant"
+    assert state.list_audit()[0]["origin"] == "agent"
+
+
+def test_top_level_identity_in_model_reply_is_ignored(session, state, policies, model_config):
+    content = json.dumps({
+        "actions": [{"tool": "read_document", "resource_id": "doc-004"}],
+        "actor_id": "security-officer",
+        "origin": "human",
+    })
+    fake = FakeTransport(content)
+
+    proposal = proposer.propose("read doc-004", session=session("intern"), state=state,
+                                policies=policies, config=model_config, transport=fake)
+
+    assert proposal.backend == "model"
+    assert proposal.actions[0].actor_id == "intern"
+    assert proposal.actions[0].origin == "agent"
+
+
+def test_model_delivery_is_a_proposal_the_gateway_can_block(session, state, policies,
+                                                            report_id, model_config):
+    proposal, _ = _ask(
+        f"send {report_id} to vendor@outside.example",
+        [{"tool": "deliver_inbox", "resource_id": report_id,
+          "recipient": "vendor@outside.example"}],
+        session("analyst"), state, policies, model_config)
+
+    decision, _ = session("analyst").submit(proposal.actions[0])
+    assert not decision.allowed
+    assert decision.rule_id == "RULE-RECIPIENT-NOT-PERMITTED"
+    assert state.list_outbox() == []
+    assert not any(execution.startswith("deliver_inbox") for execution in tools.EXECUTIONS)
+
+
+def test_model_call_failure_falls_back_to_scripted(session, state, policies, model_config):
+    fake = FakeTransport(error=urllib.error.URLError("offline"))
+
+    proposal = proposer.propose("read doc-004", session=session("analyst"), state=state,
+                                policies=policies, config=model_config, transport=fake)
+
+    assert proposal.backend == "scripted"
+    assert proposal.refusal is None
+    assert proposal.actions[0].resource_id == "doc-004"
+
+
+def test_bad_envelope_falls_back_to_scripted(session, state, policies, model_config):
+    fake = FakeTransport(envelope={"error": "quota"})
+
+    proposal = proposer.propose("read doc-004", session=session("analyst"), state=state,
+                                policies=policies, config=model_config, transport=fake)
+
+    assert proposal.backend == "scripted"
+    assert proposal.actions[0].resource_id == "doc-004"
+
+
+@pytest.mark.parametrize("content, expected", [
+    ("not json at all", "not valid JSON"),
+    ("[]", "not a JSON object"),
+    (_reply([]), "no tool action"),
+    (_reply([{"tool": "wire_transfer", "resource_id": "doc-004"}]), "unknown tool"),
+    (_reply([{"tool": "read_document", "resource_id": "doc-004", "title": "x"}]),
+     "unexpected field"),
+    (json.dumps({"actions": [{"tool": "read_document", "resource_id": "doc-004"}],
+                 "note": "extra"}), "unexpected field"),
+    (_reply([{"tool": "read_document", "resource_id": "doc-999"}]), "not registered"),
+    (_reply([{"tool": "save_report", "source_ids": ["doc-999"]}]), "not registered"),
+    (_reply([{"tool": "save_report", "source_ids": []}]), "no sources"),
+    (_reply([{"tool": "deliver_inbox", "resource_id": "report-nope",
+              "recipient": "manager@corp.example"}]), "does not exist"),
+    (_reply([{"tool": "read_document", "resource_id": "doc-004",
+              "recipient": "manager@corp.example"}]), "mixed fields"),
+])
+def test_untrusted_model_replies_are_rejected(content, expected, session, state, policies,
+                                              model_config):
+    fake = FakeTransport(content)
+
+    proposal = proposer.propose("read doc-004", session=session("analyst"), state=state,
+                                policies=policies, config=model_config, transport=fake)
+
+    assert proposal.backend == "model"
+    assert proposal.actions == []
+    assert proposal.refusal.startswith("Refused:")
+    assert expected in proposal.refusal
+
+
+def test_model_recipient_must_be_in_the_directory(session, state, policies, report_id,
+                                                  model_config):
+    fake = FakeTransport(_reply([{"tool": "deliver_inbox", "resource_id": report_id,
+                                  "recipient": "attacker@outside.example"}]))
+
+    proposal = proposer.propose(f"send {report_id} to attacker@outside.example",
+                                session=session("analyst"), state=state, policies=policies,
+                                config=model_config, transport=fake)
+
+    assert proposal.actions == []
+    assert "not in the directory" in proposal.refusal
+
+
+def test_release_sentence_never_reaches_the_model(session, state, policies, model_config):
+    fake = FakeTransport(_reply([{"tool": "read_document", "resource_id": "doc-004"}]))
+
+    proposal = proposer.propose("declassify report-abc123 to PUBLIC",
+                                session=session("security-officer"), state=state,
+                                policies=policies, config=model_config, transport=fake)
+
+    assert proposal.actions == []
+    assert "cannot change a security label" in proposal.refusal
+    assert fake.calls == []
+
+
+def test_fenced_json_reply_is_accepted(session, state, policies, model_config):
+    fake = FakeTransport("```json\n" + _reply(
+        [{"tool": "read_document", "resource_id": "doc-004"}]) + "\n```")
+
+    proposal = proposer.propose("read doc-004", session=session("analyst"), state=state,
+                                policies=policies, config=model_config, transport=fake)
+
+    assert proposal.backend == "model"
+    assert proposal.actions[0].resource_id == "doc-004"

@@ -9,14 +9,21 @@ deterministic policy engine. Identity written in the sentence is discarded.
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import urllib.request
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Callable, Literal, Mapping
 
 from pydantic import BaseModel, Field
 
 from .models import ActionRequest, PolicySet
 
 ROOT = Path(__file__).resolve().parent.parent
+
+Transport = Callable[[str, dict[str, Any], dict[str, str], float], bytes | str]
 
 _EXAMPLE = ("'read doc-004', 'summarise doc-002 and doc-004', or "
             "'send report-abc123 to manager@corp.example'")
@@ -83,6 +90,40 @@ _DESCRIPTOR_STOPWORDS = {
     "for", "from",
 }
 
+_SYSTEM_PROMPT = (
+    "Translate one sentence into tool actions for a security gateway. Reply with JSON only, "
+    'in the shape {"actions":[{"tool":"read_document","resource_id":"doc-001"}]}. '
+    "read_document takes resource_id. save_report takes source_ids. deliver_inbox takes "
+    "resource_id and recipient. Use only ids from the vocabulary; never invent an id. "
+    "Identity is bound by the gateway: do not emit or infer an actor or origin. Changing a "
+    "security classification is not an available action. If the sentence cannot be expressed, "
+    'reply {"actions":[]}.'
+)
+_MODEL_ACTION_KEYS = {"tool", "resource_id", "source_ids", "recipient", "actor_id", "origin"}
+_MODEL_IGNORED_KEYS = {"actor_id", "origin"}
+_MODEL_TOOLS = ("read_document", "save_report", "deliver_inbox")
+_MAX_MODEL_ACTIONS = 20
+
+
+@dataclass(frozen=True)
+class ModelConfig:
+    """Optional model endpoint. The key is kept out of repr and never persisted."""
+
+    base_url: str
+    api_key: str = field(repr=False)
+    model: str = "gpt-4o-mini"
+    timeout: float = 8.0
+
+    @classmethod
+    def from_env(cls, env: Mapping[str, str] | None = None) -> ModelConfig | None:
+        source = os.environ if env is None else env
+        base_url = source.get("AGENTGATE_MODEL_BASE_URL", "").strip()
+        api_key = source.get("AGENTGATE_MODEL_KEY", "").strip()
+        if not base_url or not api_key:
+            return None
+        model = source.get("AGENTGATE_MODEL_NAME", "").strip() or "gpt-4o-mini"
+        return cls(base_url=base_url, api_key=api_key, model=model)
+
 
 class _Refused(Exception):
     """A sentence this deterministic parser will not turn into an action."""
@@ -92,15 +133,19 @@ class Proposal(BaseModel):
     """What the proposer understood. Not a decision and not a permission."""
 
     actions: list[ActionRequest] = Field(default_factory=list)
-    backend: str = "scripted"
+    backend: Literal["scripted", "model"] = "scripted"
     refusal: str | None = None
 
 
-def propose(sentence: str, *, session, state, policies: PolicySet) -> Proposal:
+def propose(sentence: str, *, session, state, policies: PolicySet,
+            transport: Transport | None = None,
+            config: ModelConfig | None = None) -> Proposal:
     """Turn one sentence into proposals for the session's actor.
 
     `session` supplies the identity; anything the sentence says about identity is
-    ignored. The returned actions still have to pass `Session.submit`.
+    ignored. The returned actions still have to pass `Session.submit`. The model
+    backend is used only when both model environment variables are configured (or a
+    `config` is passed); otherwise the deterministic scripted parser runs.
     """
     actor_id = _actor_id(session)
     text = " ".join(sentence.split()) if isinstance(sentence, str) else ""
@@ -108,6 +153,11 @@ def propose(sentence: str, *, session, state, policies: PolicySet) -> Proposal:
         return _refusal("the proposer needs a sentence to interpret.")
     if _RELEASE_RE.search(text):
         return Proposal(refusal=_RELEASE_REFUSAL)
+
+    model = config if config is not None else ModelConfig.from_env()
+    if model is not None:
+        return _model_proposal(text, actor_id=actor_id, state=state, policies=policies,
+                               config=model, transport=transport or _urllib_transport)
     return _scripted(text, actor_id=actor_id, state=state, policies=policies)
 
 
@@ -237,6 +287,199 @@ def _report_ids(artifacts) -> str:
     return ", ".join(artifact.id for artifact in artifacts) or "none"
 
 
+# -- optional model backend ------------------------------------------------
+
+
+def _model_proposal(text: str, *, actor_id: str, state, policies: PolicySet,
+                    config: ModelConfig, transport: Transport) -> Proposal:
+    content = _call_model(text, state=state, policies=policies, config=config,
+                          transport=transport)
+    if content is None:
+        return _scripted(text, actor_id=actor_id, state=state, policies=policies)
+
+    try:
+        payload = json.loads(_strip_fence(content))
+    except (json.JSONDecodeError, TypeError):
+        return _model_refusal("the model reply was not valid JSON, so it was discarded.")
+    try:
+        actions = _actions_from_model(payload, state=state, policies=policies)
+    except _Refused as refused:
+        return _model_refusal(str(refused))
+    return Proposal(actions=_stamp(actions, actor_id), backend="model")
+
+
+def _call_model(text: str, *, state, policies: PolicySet, config: ModelConfig,
+                transport: Transport) -> str | None:
+    """Return the reply text, or None when the call itself failed.
+
+    Any transport, HTTP or envelope failure counts as the model backend being
+    unavailable; the caller then falls back to the scripted parser. A reply that
+    arrives but breaks the contract is handled separately as untrusted input.
+    """
+    payload = _model_payload(text, state=state, policies=policies, model=config.model)
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config.api_key}",
+    }
+    try:
+        body = transport(config.base_url, payload, headers, config.timeout)
+        if isinstance(body, str):
+            body = body.encode("utf-8")
+        envelope = json.loads(body)
+        content = envelope["choices"][0]["message"]["content"]
+    except Exception:
+        return None
+    return content if isinstance(content, str) else None
+
+
+def _model_payload(sentence: str, *, state, policies: PolicySet, model: str) -> dict[str, Any]:
+    """Sentence plus identifiers only: no titles, labels, bodies or policy text."""
+    vocabulary = {
+        "sentence": sentence,
+        "documents": [document.id for document in state.list_documents()],
+        "reports": [artifact.id for artifact in state.list_artifacts()],
+        "actors": [principal.id for principal in policies.principals
+                   if principal.kind != "recipient"],
+        "recipients": [principal.id for principal in policies.principals
+                       if principal.kind != "actor"],
+    }
+    return {
+        "model": model,
+        "temperature": 0,
+        "messages": [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(vocabulary, ensure_ascii=False)},
+        ],
+    }
+
+
+def _actions_from_model(raw, *, state, policies: PolicySet) -> list[ActionRequest]:
+    if not isinstance(raw, dict):
+        raise _Refused("the model reply was not a JSON object, so it was discarded.")
+    unexpected = set(raw) - {"actions"} - _MODEL_IGNORED_KEYS
+    if unexpected:
+        raise _Refused("the model reply carried unexpected field(s) "
+                       f"{_field_list(unexpected)}, so it was discarded.")
+    items = raw.get("actions")
+    if not isinstance(items, list):
+        raise _Refused("the model reply had no list of actions, so it was discarded.")
+    if not items:
+        raise _Refused("the model returned no tool action, so nothing was proposed.")
+    if len(items) > _MAX_MODEL_ACTIONS:
+        raise _Refused(f"the model returned {len(items)} actions; the limit is "
+                       f"{_MAX_MODEL_ACTIONS}, so the reply was discarded.")
+    return [_action_from_model(item, state=state, policies=policies) for item in items]
+
+
+def _action_from_model(item, *, state, policies: PolicySet) -> ActionRequest:
+    if not isinstance(item, dict):
+        raise _Refused("the model reply contained an action that was not an object, "
+                       "so it was discarded.")
+    unexpected = set(item) - _MODEL_ACTION_KEYS
+    if unexpected:
+        raise _Refused("the model action carried unexpected field(s) "
+                       f"{_field_list(unexpected)}, so it was discarded.")
+    item = {key: value for key, value in item.items() if key not in _MODEL_IGNORED_KEYS}
+
+    tool = item.get("tool")
+    if not isinstance(tool, str) or tool not in _MODEL_TOOLS:
+        raise _Refused(f"the model asked for unknown tool '{_short(tool)}', "
+                       "so nothing was proposed.")
+    resource = item.get("resource_id")
+    if resource is not None and not isinstance(resource, str):
+        raise _Refused("the model gave a resource id that is not text, "
+                       "so the reply was discarded.")
+    recipient = item.get("recipient")
+    if recipient is not None and not isinstance(recipient, str):
+        raise _Refused("the model gave a recipient that is not text, "
+                       "so the reply was discarded.")
+    sources = item.get("source_ids")
+    if sources is None:
+        sources = []
+    if not isinstance(sources, list) or any(not isinstance(source, str) for source in sources):
+        raise _Refused("the model gave sources that are not a list of ids, "
+                       "so the reply was discarded.")
+
+    if tool == "read_document":
+        if sources or recipient:
+            raise _Refused("the model mixed fields across tools, so the reply was discarded.")
+        return ActionRequest(tool="read_document", resource_id=_model_document(resource, state))
+    if tool == "save_report":
+        if resource or recipient:
+            raise _Refused("the model mixed fields across tools, so the reply was discarded.")
+        if not sources:
+            raise _Refused("the model proposed a report with no sources, "
+                           "so nothing was proposed.")
+        return ActionRequest(tool="save_report", source_ids=_model_sources(sources, state))
+    if sources:
+        raise _Refused("the model mixed fields across tools, so the reply was discarded.")
+    if not resource or not recipient:
+        raise _Refused("the model proposed a delivery without a report or recipient, "
+                       "so nothing was proposed.")
+    return ActionRequest(tool="deliver_inbox", resource_id=_model_artifact(resource, state),
+                         recipient=_model_recipient(recipient, policies))
+
+
+def _model_document(resource: str | None, state) -> str:
+    if not resource:
+        raise _Refused("the model proposed a read without a document id, "
+                       "so nothing was proposed.")
+    known = {document.id.lower(): document.id for document in state.list_documents()}
+    canonical = known.get(resource.lower())
+    if canonical is None:
+        raise _Refused(f"the model named document '{_short(resource)}', which is not "
+                       "registered, so the reply was discarded.")
+    return canonical
+
+
+def _model_sources(sources: list[str], state) -> list[str]:
+    known = {document.id.lower(): document.id for document in state.list_documents()}
+    canonical: list[str] = []
+    for source in sources:
+        document = known.get(source.lower())
+        if document is None:
+            raise _Refused(f"the model named source '{_short(source)}', which is not "
+                           "registered, so the reply was discarded.")
+        if document not in canonical:
+            canonical.append(document)
+    return canonical
+
+
+def _model_artifact(resource: str | None, state) -> str:
+    known = {artifact.id.lower(): artifact.id for artifact in state.list_artifacts()}
+    canonical = known.get(resource.lower()) if resource else None
+    if canonical is None:
+        raise _Refused(f"the model named report '{_short(resource)}', which does not exist, "
+                       "so the reply was discarded.")
+    return canonical
+
+
+def _model_recipient(raw: str, policies: PolicySet) -> str:
+    known = {principal.id.lower(): principal.id for principal in policies.principals
+             if principal.kind != "actor"}
+    canonical = known.get(raw.lower())
+    if canonical is None:
+        raise _Refused(f"the model named recipient '{_short(raw)}', which is not in the "
+                       "directory, so the reply was discarded.")
+    return canonical
+
+
+def _strip_fence(content: str) -> str:
+    text = content.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```$", "", text)
+    return text
+
+
+def _urllib_transport(url: str, payload: dict[str, Any], headers: dict[str, str],
+                      timeout: float) -> bytes:
+    data = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return response.read()
+
+
 # -- identity and stamping -------------------------------------------------
 
 
@@ -289,6 +532,16 @@ def _refusal(reason: str) -> Proposal:
     if not reason.startswith("Refused:"):
         reason = "Refused: " + reason
     return Proposal(refusal=reason)
+
+
+def _model_refusal(reason: str) -> Proposal:
+    return Proposal(backend="model", refusal="Refused: " + reason)
+
+
+def _field_list(names, limit: int = 4) -> str:
+    clean = sorted(_short(name, 30) for name in names)
+    shown = ", ".join(clean[:limit])
+    return shown + ("..." if len(clean) > limit else "")
 
 
 def _short(text: str, limit: int = 90) -> str:
