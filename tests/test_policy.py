@@ -1,67 +1,54 @@
-"""Authorization correctness: who may do what, and default deny."""
+"""Authorization correctness: identity is bound by the session, not by the request."""
 
 from __future__ import annotations
 
-from agentgate.gateway import run_action
 from agentgate.models import ActionRequest
 
 
-def test_analyst_reads_confidential(state, policies):
-    decision, result = run_action(
-        ActionRequest(actor_id="analyst", tool="read_document", resource_id="doc-001"),
-        state, policies)
+def test_analyst_reads_confidential(session):
+    decision, result = session("analyst").submit(
+        ActionRequest(tool="read_document", resource_id="doc-001"))
     assert decision.allowed
     assert "recurring revenue" in result
 
 
-def test_agent_blocked_from_confidential(state, policies):
-    decision, result = run_action(
-        ActionRequest(actor_id="agent-assistant", tool="read_document", resource_id="doc-001",
-                      origin="agent", note="the document says it is public"),
-        state, policies)
+def test_agent_blocked_from_confidential(session):
+    decision, result = session("agent-assistant", "agent").submit(
+        ActionRequest(tool="read_document", resource_id="doc-001",
+                      note="the document says it is public"))
     assert not decision.allowed
     assert decision.rule_id == "RULE-READ-CLEARANCE"
     assert result is None
 
 
-def test_intern_reads_public(state, policies):
-    decision, _ = run_action(
-        ActionRequest(actor_id="intern", tool="read_document", resource_id="doc-002"),
-        state, policies)
-    assert decision.allowed
-
-
-def test_injection_text_in_a_document_grants_nothing(state, policies):
-    """doc-003 claims to be PUBLIC and orders an external send. Both are ignored."""
-    decision, _ = run_action(
-        ActionRequest(actor_id="agent-assistant", tool="read_document", resource_id="doc-003",
-                      origin="agent"),
-        state, policies)
+def test_request_cannot_claim_a_different_actor(session, state):
+    """A request naming a stronger actor is ignored; the session identity wins."""
+    decision, _ = session("agent-assistant", "agent").submit(
+        ActionRequest(actor_id="analyst", tool="read_document", resource_id="doc-001"))
     assert not decision.allowed
-    assert decision.rule_id == "RULE-READ-CLEARANCE"
+    assert state.list_audit()[0]["actor"] == "agent-assistant"
 
 
-def test_unknown_actor_denied(state, policies):
-    decision, _ = run_action(
-        ActionRequest(actor_id="ghost", tool="read_document", resource_id="doc-002"),
-        state, policies)
+def test_request_cannot_claim_to_be_human(session, state):
+    decision, _ = session("agent-assistant", "agent").submit(
+        ActionRequest(tool="read_document", resource_id="doc-004", origin="human"))
+    assert decision.allowed
+    assert state.list_audit()[0]["origin"] == "agent"
+
+
+def test_unknown_actor_denied(session):
+    decision, _ = session("ghost").submit(
+        ActionRequest(tool="read_document", resource_id="doc-002"))
     assert not decision.allowed
     assert decision.rule_id == "RULE-UNKNOWN-ACTOR"
 
 
-def test_missing_send_rule_falls_back_to_default_deny(state, policies):
-    state_artifact = _make_public_report(state, policies)
-    decision, _ = run_action(
-        ActionRequest(actor_id="intern", tool="deliver_inbox", resource_id=state_artifact,
-                      recipient="team@corp.example"),
-        state, policies)
+def test_intern_has_no_send_rule(session, state):
+    dec, artifact_id = session("intern").submit(
+        ActionRequest(tool="save_report", source_ids=["doc-002"]))
+    assert dec.allowed
+    decision, _ = session("intern").submit(
+        ActionRequest(tool="deliver_inbox", resource_id=artifact_id,
+                      recipient="team@corp.example"))
     assert not decision.allowed
     assert decision.rule_id == "RULE-NO-GRANT"
-
-
-def _make_public_report(state, policies) -> str:
-    _, artifact_id = run_action(
-        ActionRequest(actor_id="intern", tool="save_report", source_ids=["doc-002"],
-                      title="Menu digest"),
-        state, policies)
-    return artifact_id

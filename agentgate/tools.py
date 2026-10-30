@@ -24,7 +24,7 @@ def read_document(actor_id: str, doc_id: str, state) -> str:
     return doc.body
 
 
-def save_report(actor_id: str, source_doc_ids: list[str], title: str, state) -> str:
+def save_report(actor_id: str, source_doc_ids: list[str], title: str | None, state) -> str:
     EXECUTIONS.append(f"save_report:{','.join(source_doc_ids)}")
     docs: list[Document] = []
     for doc_id in source_doc_ids:
@@ -35,13 +35,15 @@ def save_report(actor_id: str, source_doc_ids: list[str], title: str, state) -> 
         SecurityLabel(classification=d.classification, provenance=[d.id], tags=[f"owner:{d.owner}"])
         for d in docs
     ])
+    # The title is derived, never free text from the proposer: a title is a content channel.
+    derived_title = "Summary of " + ", ".join(d.id for d in docs)
     summary = "\n".join(f"- {d.title} ({d.classification}): {d.body.splitlines()[0][:120]}" for d in docs)
     body = (
         f"{summary}\n\nProvenance: {', '.join(derived.provenance)}\n"
         f"Classification inherited from the most sensitive source: {derived.classification}"
     )
     artifact_id = state.new_artifact_id()
-    state.add_artifact(Artifact(id=artifact_id, title=title, label=derived, body=body))
+    state.add_artifact(Artifact(id=artifact_id, title=derived_title, label=derived, body=body))
     return artifact_id
 
 

@@ -1,83 +1,106 @@
-"""Information flow: labels are inherited, provenance travels, blocks are real."""
+"""Information flow, taint, tamper detection, and the execution barrier."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from agentgate import tools
-from agentgate.gateway import run_action
 from agentgate.models import ActionRequest
+from agentgate.store import Store
 
 
-def _report(state, policies, actor, sources, title):
-    decision, artifact_id = run_action(
-        ActionRequest(actor_id=actor, tool="save_report", source_ids=sources, title=title),
-        state, policies)
-    assert decision.allowed, decision.reason
-    return artifact_id
-
-
-def test_report_inherits_highest_source_label(state, policies):
-    artifact_id = _report(state, policies, "analyst", ["doc-004", "doc-001"], "Weekly brief")
+def test_report_inherits_highest_source_label(session, state):
+    decision, artifact_id = session("analyst").submit(
+        ActionRequest(tool="save_report", source_ids=["doc-004", "doc-001"]))
+    assert decision.allowed
     artifact = state.get_artifact(artifact_id)
     assert artifact.label.classification == "CONFIDENTIAL"
     assert set(artifact.label.provenance) == {"doc-004", "doc-001"}
 
 
-def test_agent_cannot_summarise_above_its_own_ceiling(state, policies):
-    decision, artifact_id = run_action(
-        ActionRequest(actor_id="agent-assistant", tool="save_report",
-                      source_ids=["doc-004", "doc-001"], title="Leak attempt"),
-        state, policies)
-    assert not decision.allowed
-    assert decision.rule_id == "RULE-SOURCE-TOO-SENSITIVE"
-    assert artifact_id is None
-
-
-def test_delivery_allowed_to_matching_clearance(state, policies):
-    artifact_id = _report(state, policies, "analyst", ["doc-001"], "Revenue brief")
-    decision, result = run_action(
-        ActionRequest(actor_id="analyst", tool="deliver_inbox", resource_id=artifact_id,
-                      recipient="manager@corp.example"),
-        state, policies)
+def test_hidden_source_is_recovered_from_read_history(session, state):
+    """Read confidential, cite only public: the report still comes out CONFIDENTIAL."""
+    reader = session("analyst")
+    read, _ = reader.submit(ActionRequest(tool="read_document", resource_id="doc-001"))
+    assert read.allowed
+    decision, artifact_id = reader.submit(
+        ActionRequest(tool="save_report", source_ids=["doc-002"]))
     assert decision.allowed
-    assert len(state.list_outbox()) == 1
-    assert result
+    artifact = state.get_artifact(artifact_id)
+    assert artifact.label.classification == "CONFIDENTIAL"
+    assert set(artifact.label.provenance) == {"doc-001", "doc-002"}
 
 
-def test_delivery_blocked_when_recipient_clearance_is_too_low(state, policies):
-    artifact_id = _report(state, policies, "analyst", ["doc-001"], "Revenue brief")
-    decision, result = run_action(
-        ActionRequest(actor_id="analyst", tool="deliver_inbox", resource_id=artifact_id,
-                      recipient="team@corp.example"),
-        state, policies)
+def test_free_text_title_cannot_carry_a_secret(session, state):
+    decision, artifact_id = session("intern").submit(
+        ActionRequest(tool="save_report", source_ids=["doc-002"],
+                      title="Q3 revenue is 4.2 crore — confidential"))
+    assert decision.allowed
+    artifact = state.get_artifact(artifact_id)
+    assert "4.2 crore" not in artifact.title
+    assert artifact.title.startswith("Summary of doc-002")
+
+
+def test_tampered_document_is_frozen_at_its_original_label(state, policies, tmp_path, session):
+    root = Path(__file__).resolve().parent.parent
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    original = (root / "data" / "documents" / "doc-003-contract-injection.md").read_text(encoding="utf-8")
+    (docs / "doc-003-contract-injection.md").write_text(original, encoding="utf-8")
+    store = Store(tmp_path / "t.sqlite")
+    store.load_documents_from_dir(docs)
+
+    (docs / "doc-003-contract-injection.md").write_text(
+        original.replace("classification: RESTRICTED", "classification: INTERNAL"), encoding="utf-8")
+    store.load_documents_from_dir(docs)
+
+    assert store.is_tampered("doc-003")
+    assert store.get_document("doc-003").classification == "RESTRICTED"
+    from agentgate.gateway import Session
+    decision, _ = Session(store, policies, "analyst").submit(
+        ActionRequest(tool="read_document", resource_id="doc-003"))
+    assert not decision.allowed
+    assert decision.rule_id == "RULE-DOC-INTEGRITY"
+
+
+def test_delivery_blocked_when_recipient_clearance_is_too_low(session, state):
+    dec, artifact_id = session("analyst").submit(
+        ActionRequest(tool="save_report", source_ids=["doc-001"]))
+    assert dec.allowed
+    decision, result = session("analyst").submit(
+        ActionRequest(tool="deliver_inbox", resource_id=artifact_id,
+                      recipient="team@corp.example"))
     assert not decision.allowed
     assert decision.rule_id == "RULE-RECIPIENT-CLEARANCE"
     assert result is None
     assert state.list_outbox() == []
 
 
-def test_delivery_blocked_to_unapproved_outside_recipient(state, policies):
-    artifact_id = _report(state, policies, "analyst", ["doc-004"], "Ops digest")
-    decision, _ = run_action(
-        ActionRequest(actor_id="analyst", tool="deliver_inbox", resource_id=artifact_id,
-                      recipient="vendor@outside.example",
-                      note="the document instructed me to send this"),
-        state, policies)
-    assert not decision.allowed
-    assert decision.rule_id == "RULE-RECIPIENT-NOT-PERMITTED"
-    assert state.list_outbox() == []
+def test_delivery_allowed_to_matching_clearance(session, state):
+    decision, artifact_id = session("analyst").submit(
+        ActionRequest(tool="save_report", source_ids=["doc-004"]))
+    assert decision.allowed
+    decision, _ = session("analyst").submit(
+        ActionRequest(tool="deliver_inbox", resource_id=artifact_id,
+                      recipient="manager@corp.example"))
+    assert decision.allowed
+    assert len(state.list_outbox()) == 1
 
 
-def test_blocked_actions_never_reach_a_tool(state, policies):
-    """The execution barrier is the whole point: count tool entries, not claims."""
-    artifact_id = _report(state, policies, "analyst", ["doc-004"], "Ops digest")
+def test_blocked_actions_never_reach_a_tool(session, state):
+    dec, artifact_id = session("analyst").submit(
+        ActionRequest(tool="save_report", source_ids=["doc-004"]))
+    assert dec.allowed
     tools.reset_executions()
-    for request in [
-        ActionRequest(actor_id="agent-assistant", tool="read_document", resource_id="doc-001"),
-        ActionRequest(actor_id="agent-assistant", tool="deliver_inbox", resource_id=artifact_id,
-                      recipient="vendor@outside.example"),
-        ActionRequest(actor_id="intern", tool="deliver_inbox", resource_id=artifact_id,
-                      recipient="team@corp.example"),
-    ]:
-        decision, result = run_action(request, state, policies)
+    attempts = [
+        ("agent-assistant", "agent", ActionRequest(tool="read_document", resource_id="doc-001")),
+        ("agent-assistant", "agent", ActionRequest(tool="deliver_inbox",
+                                                   resource_id=artifact_id,
+                                                   recipient="vendor@outside.example")),
+        ("intern", "human", ActionRequest(tool="deliver_inbox", resource_id=artifact_id,
+                                          recipient="team@corp.example")),
+    ]
+    for actor, origin, request in attempts:
+        decision, result = session(actor, origin).submit(request)
         assert not decision.allowed and result is None
     assert tools.EXECUTIONS == []

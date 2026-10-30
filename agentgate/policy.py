@@ -6,6 +6,7 @@ action is denied. Nothing here reads `body`, `note`, or any model output.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -14,9 +15,14 @@ from .models import ActionRequest, Decision, PolicySet, SecurityLabel
 
 
 def load_policy_set(principals_path: str | Path, policies_path: str | Path) -> PolicySet:
-    principals = json.loads(Path(principals_path).read_text(encoding="utf-8"))
-    rules = json.loads(Path(policies_path).read_text(encoding="utf-8"))
-    return PolicySet(principals=principals, rules=rules)
+    principals_raw = Path(principals_path).read_bytes()
+    rules_raw = Path(policies_path).read_bytes()
+    fingerprint = hashlib.sha256(principals_raw + b"\n" + rules_raw).hexdigest()[:16]
+    return PolicySet(
+        principals=json.loads(principals_raw.decode("utf-8")),
+        rules=json.loads(rules_raw.decode("utf-8")),
+        fingerprint=fingerprint,
+    )
 
 
 def evaluate(request: ActionRequest, state, policies: PolicySet) -> Decision:
@@ -50,6 +56,12 @@ def _check_read(request, state, actor, rule) -> Decision:
     if doc is None:
         return _deny("RULE-NO-SUCH-DOCUMENT",
                      f"Document '{request.resource_id}' does not exist.")
+    if state.is_tampered(doc.id):
+        return _deny(
+            "RULE-DOC-INTEGRITY",
+            f"Blocked: '{doc.title}' changed on disk after it was registered. Its label can no "
+            "longer be trusted, so the document is frozen at the original classification.",
+        )
     ceiling = _ceiling(actor.clearance, rule.max_classification)
     if not labels.at_least(ceiling, doc.classification):
         return _deny(
@@ -75,6 +87,9 @@ def _check_save(request, state, actor, rule) -> Decision:
         doc = state.get_document(doc_id)
         if doc is None:
             return _deny("RULE-NO-SUCH-DOCUMENT", f"Source '{doc_id}' does not exist.")
+        if state.is_tampered(doc.id):
+            return _deny("RULE-DOC-INTEGRITY",
+                         f"Blocked: source '{doc.title}' changed on disk after registration.")
         ceiling = _ceiling(actor.clearance, rule.max_classification)
         if not labels.at_least(ceiling, doc.classification):
             return _deny(

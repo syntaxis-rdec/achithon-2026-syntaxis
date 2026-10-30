@@ -45,6 +45,7 @@ class PolicySet(BaseModel):
 
     principals: list[Principal]
     rules: list[PolicyRule]
+    fingerprint: str = ""
 
     def principal(self, principal_id: str) -> Principal | None:
         for p in self.principals:
@@ -57,9 +58,13 @@ class PolicySet(BaseModel):
 
 
 class ActionRequest(BaseModel):
-    """One proposed tool call. Produced by a human click or by the agent."""
+    """One proposed tool call. Produced by a human click or by the agent.
 
-    actor_id: str
+    `actor_id` and `origin` are overwritten by the session at submit time; they are
+    carried here only so logs and tests can show what was requested.
+    """
+
+    actor_id: str = ""
     tool: ToolName
     resource_id: str | None = None
     source_ids: list[str] = Field(default_factory=list)

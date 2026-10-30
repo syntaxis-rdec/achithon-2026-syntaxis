@@ -21,6 +21,13 @@
     "allowed_recipients": ["team@corp.example"]
   },
   {
+    "id": "security-officer",
+    "kind": "actor",
+    "role": "security-officer",
+    "clearance": "RESTRICTED",
+    "allowed_recipients": []
+  },
+  {
     "id": "manager@corp.example",
     "kind": "recipient",
     "role": "none",
