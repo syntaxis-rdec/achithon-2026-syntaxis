@@ -257,8 +257,14 @@ history on his branch.
 ## Ready to merge (task 4)
 
 - Code commit `20b433a` (export + tests), docs `7a74fd1` (submission + lane notes), hardening
-  `138cd5f` (CI, structural tests, corrected numbers), then the notes/log commit.
-- `pytest` — **222 passed, 1 xfailed**; 18 of those tests are new here (12 export, 6 structural).
+  `138cd5f` (CI, structural tests, corrected numbers), `3274c06` (merge of `lane/aryan`, notes
+  conflict resolved by keeping both), `58c4a9c` (flask declared), then the notes/log commit.
+- Aryan's `web/` layer is now in this lane. It is **static** — one Flask route rendering 2,119 lines of
+  HTML with no request to the gateway — so it must not be shown as live evidence. That caveat, plus
+  the undeclared dependency and the 21-commit-old baseline, is recorded in his section of
+  `team/aryan/NOTES.md`.
+- `pytest` — **224 passed, 1 xfailed**; 20 of those tests are new here (12 export, 6 structural,
+  2 for Aryan's web routes once flask was declared).
 - `python -m agentgate.export` on a seeded database — one line, four files, exit 0.
 - `python demo/rehearse.py` — 12/12 beats, 6.2 s, exit 0, beat 0 now `yes`.
 - `python -m benchmark.runner` 32/32, `benchmark.mutations` 6/6, `python -m redteam` 21/22 held.

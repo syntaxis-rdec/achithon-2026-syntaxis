@@ -8,7 +8,7 @@ prints today.
 ```bash
 python -m venv .venv && .venv/Scripts/activate     # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-pytest                                    # 223 tests: 222 pass, 1 documented xfail
+pytest                                    # 225 tests: 224 pass, 1 documented xfail
 python -m benchmark.runner                # 32/32 scenarios, 0 unauthorized, 0 false allows
 python -m benchmark.mutations             # 6/6 deliberate breakages detected
 python -m redteam                         # 22 attacks: 21 held, 1 open finding (LF-2)

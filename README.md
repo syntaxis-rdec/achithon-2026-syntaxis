@@ -42,7 +42,7 @@ python -m benchmark.runner      # 32 frozen scenarios → benchmark/results.json
 python -m benchmark.mutations   # breaks the gateway six ways; every break must be detected
 python -m redteam               # 22 named attacks: 21 held, 1 documented open finding
 python demo/rehearse.py         # the whole stage demo, 12 beats, under 90 seconds
-pytest                          # 223 tests: 222 pass, 1 documented xfail
+pytest                          # 225 tests: 224 pass, 1 documented xfail
 ```
 
 `python -m agentgate.export <db> exports/` turns a live database into `audit.csv`, `audit.json`,

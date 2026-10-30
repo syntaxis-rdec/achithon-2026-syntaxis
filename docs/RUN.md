@@ -68,7 +68,7 @@ run. They are not independently authored. The mutation check is what makes the n
 
 | Claim | Command |
 |---|---|
-| the suite is green | `pytest` — 223 tests, 222 pass, 1 documented xfail |
+| the suite is green | `pytest` — 225 tests, 224 pass, 1 documented xfail |
 | the frozen table is matched | `python -m benchmark.runner` — 32/32 |
 | the table would notice a break | `python -m benchmark.mutations` — 6/6 detected |
 | the attacks are refused | `python -m redteam` — 21 of 22 held, one documented |
