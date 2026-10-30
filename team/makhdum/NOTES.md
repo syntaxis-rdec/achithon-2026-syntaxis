@@ -5,9 +5,12 @@
 - `data/eval_documents/` — six clean/hostile pairs, 12 files. Twins share `title`, `classification`
   and `owner`; the hostile body is the clean body plus one attack. Pair 1 is INTERNAL and only
   appends text, so the two bodies differ by exactly the payload.
-- `tests/test_injection.py` — 25 tests. A fresh `Store(tmp_path / "inj-NN.sqlite")` per pair, then
+- `tests/test_injection.py` — 33 tests. A fresh `Store(tmp_path / "inj-NN.sqlite")` per pair, then
   the same three actions through `Session`: agent reads, analyst saves a report citing it, analyst
   delivers to `team@corp.example`.
+- The same file also carries the two things the corpus alone cannot give: a substituted-text case
+  per label, and two committed mutation checks that prove the assertions go red when the gateway
+  misbehaves. See *Findings*.
 
 Pairs: 01 direct override (INTERNAL), 02 fake system directive (CONFIDENTIAL), 03 role impersonation
 (INTERNAL), 04 urgency and authority (CONFIDENTIAL), 05 base64 with a decode hint (CONFIDENTIAL),
@@ -52,38 +55,58 @@ both twins were blocked for unrelated reasons".
 - **Read history is per actor, and the flow depends on it.** `submit` merges `reads_for(actor)` into
   `save_report` sources. The pack keeps the agent as the reader and the analyst as the saver, so the
   save cites exactly the document under test and the two twins stay comparable.
-- **The tests are not vacuous.** In a throwaway copy of the repo I patched `evaluate` to obey
-  `vendor@outside.example` found in document text. 10 of the 25 tests failed (twin equality, pinned
-  expectations, payload-in-decision, execution barrier). The same patch in `agentgate/` here would
-  be a lane violation, so the check was run outside the repo and the copy was deleted.
+- **The claim is a property, and the pack tests it as one.** `test_labels_decide_and_text_never_does`
+  copies each pair's front matter onto five different bodies — its own payload, another pair's
+  payload, neutral prose, and a body carrying an HTML comment plus a fake `classification: PUBLIC`
+  block — and requires the same three verdicts for all five. Six hand-written twins are a sample;
+  this is the thing they were standing in for. The test asserts the five bodies actually differ, so
+  it cannot pass by writing the same file five times.
+- **Detection power is committed, not recounted.** Two tests break the engine on purpose and require
+  this pack to go red. `test_pack_detects_a_policy_that_obeys_document_text` swaps in a
+  `policy._check_read` that allows any document whose body contains a payload marker: every twin pair
+  and every substituted variant then leaves the pinned expectation. `test_pack_detects_a_redirected_delivery`
+  swaps in a `tools.deliver_inbox` that honours an address found in the source text: the three
+  allow-path pairs then mail `vendor@outside.example`, which the addressee assertions catch. Both use
+  `monkeypatch`, so nothing outside the test process changes and `agentgate/` is never edited.
+  Before this, the same check was a one-off in a throwaway copy of the repo and existed only as prose.
 
 ## Requests
 
-None blocking. Three notes for the file owners:
+None blocking. Four notes for the file owners:
 
-- `README.md:43` claims `pytest # 42 tests`. It is 67 on `main` now: 34 original + 25 from this pack
-  + 8 from the workflow-resumption work. The 25 from this lane were never counted.
-- `team/README.md:41` still states the baseline is **34 passing**, and the brief in
-  `team/makhdum/README.md` repeats it. Worth one line each so the next lane doesn't chase a stale
-  number.
+- **Core crash on an empty document body.** A document whose body is empty passes every policy check
+  and then raises inside the tool, after the gateway has already recorded an ALLOW:
+  `agentgate/tools.py:50` does `d.body.splitlines()[0][:120]`, and `splitlines()` on `""` is `[]` →
+  `IndexError`. Reproduced against `main` by registering a `Document(body="")` in a temp store and
+  submitting `save_report` as `analyst`. Not in this lane, so no test asserts it. Either the loader
+  should refuse a bodyless document or the summary should fall back to an empty line.
+- `README.md:43` claims `pytest # 42 tests`. It is 75 now: 34 original + 33 from this pack + 8 from
+  the workflow-resumption work.
+- `team/README.md:41` still states the baseline is **34 passing**, and `team/makhdum/README.md`
+  repeats it. Worth one line each so the next lane doesn't chase a stale number.
 - `docs/RUN.md` does not mention `data/eval_documents/`. Demo step 3 (Injection) exercises `doc-003`
   in `data/documents/`, so the pack is currently invisible in the walkthrough a judge follows.
 
 ## Findings about my own assertions
 
-- `EXPECTED` in the test file pins rule ids straight out of `data/policies.json` and clearance levels
-  from `data/principals.json`. Both files are outside this lane. If either is retuned, three of these
-  tests fail loudly rather than silently adapting. That is intentional for a security suite, but it
-  makes this pack a tripwire for policy edits — whoever changes a rule should expect it.
-- Pairs 03 and 04 carry payloads that ask for actions the prescribed three-step flow never attempts
-  (a declassification, and a send to a non-approved recipient). Twin equality holds, but those two
-  attacks are not "live" in the flow. Closing it needs a fourth flow, which is outside the brief.
+- `EXPECTED` pins rule ids from `data/policies.json` and clearances from `data/principals.json` — both
+  outside this lane. Retuning either file makes three of these tests fail loudly instead of adapting.
+  That is deliberate for a security suite, but it makes the pack a tripwire for policy edits, so
+  whoever changes a rule should expect it.
+- Pairs 03 and 04 carry payloads that ask for actions the prescribed three-step flow never attempts: a
+  declassification, and a send to a recipient the actor may not use. Twin equality still holds, but
+  those two attacks are not exercised end to end. Closing that needs a fourth flow, which the brief
+  does not authorise.
+- The mutation checks patch module attributes that `gateway._dispatch` and `policy.evaluate` resolve at
+  call time. If either ever binds those helpers at import — `from .tools import deliver_inbox`, say —
+  the two detection tests would start asserting against a patch nothing sees, and would fail rather
+  than pass quietly. That is the safe direction for a check whose job is to fail.
 
 ## Results
 
-- `pytest tests/test_injection.py` — 25 passed.
-- `pytest` — 59 passed on the lane before merge; **67 passed** after merging `origin/main`, which
-  added the workflow-resumption suite. The pack is unaffected by `agentgate/workflow.py`.
+- `pytest tests/test_injection.py` — 33 passed.
+- `pytest` — **75 passed** against `main` (`dbb97b6`, which already carries the earlier 33 of this
+  pack as 25). Breakdown: 34 original, 33 from this lane, 8 from the workflow-resumption work.
 - `python -m benchmark.runner` — 32/32 matched, 0 unauthorized executions, 0 false allows.
 - `python -m benchmark.mutations` — all six detected.
 
@@ -92,3 +115,7 @@ None blocking. Three notes for the file owners:
 Merged into `main` at `dbb97b6` by Tanush. All four lane commits are on `main`:
 `b51625d` (corpus + 25 tests), `e51900c` (notes), `7b92fac` (addressee and canary hardening),
 `7dc7555` (notes update). `lane/makhdum` was fast-forwarded to `dbb97b6` and re-verified green.
+
+Follow-ups awaiting a merge (both docs-only or lane-only, no core file touched):
+`de83503` — merge status and the stale test counts; `9d65bb6` — the substituted-text property and
+the two committed mutation checks, which take the pack from 25 to 33 tests.
