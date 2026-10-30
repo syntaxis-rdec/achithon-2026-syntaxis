@@ -12,7 +12,7 @@
 ---
 
 ## 🧭 Reader Guide
-* **If you are a non-technical reader, judge, or executive:** Start with [Section 1: Non-Technical Overview](#1-non-technical-overview).
+* **If you are a non-technical reader or executive:** Start with [Section 1: Non-Technical Overview](#1-non-technical-overview).
 * **If you are a security architect, developer, or technical evaluator:** Jump directly to [Section 2: Technical Deep-Dive](#2-technical-deep-dive).
 * **To run the live interactive dashboard:** See [Quickstart (30 Seconds)](#quickstart-30-seconds).
 
