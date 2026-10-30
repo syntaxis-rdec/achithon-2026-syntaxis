@@ -251,3 +251,54 @@ branch=main
 repo_root=C:\Users\Tanush Garg\Documents\Qoder\2026-10-29\376c904f\team-9-11
 worktree=main
 parent_agent=none
+
+## [2026-10-30T15:25:34+05:30] Workflow runner re-decides every pending step on resume
+
+User Prompt (verbatim, secrets redacted):
+"Your task: workflow resumption. The problem statement scores 'correct behaviour after workflow
+resumption'. Today there is only a `workflows` table and a `workflow_steps` table with no runner.
+Build the real thing." — followed by the seven required behaviours (ordered steps with
+pending/done/blocked/halted statuses, a runner that re-evaluates through the existing policy path and
+never reuses a stored ALLOW, policy files re-read from disk on resume so a tightened rulebook blocks the
+pending step and halts the rest, stop at the first block, no duplicate delivery after a crash, audit rows
+carrying workflow_id and step_index, and a resumed run provable from SQLite alone), the Streamlit section,
+the five tests to add, and the hard constraints (frozen benchmark files, all 34 existing tests green, no
+new dependencies, commit small, log every turn, push at the end).
+
+Agent Response Summary:
+Built agentgate/workflow.py: create() stores an ordered list of ActionRequest proposals and resume()
+re-reads principals.json and policies.json from disk, walks the steps from the first one that is not done
+and puts each through the same Session.submit path a live click uses, so a step blocked by an earlier run
+is decided again rather than skipped and a rule tightened while the app was closed blocks it under the new
+fingerprint. The first block stops the walk and marks the steps behind it halted; an already-executed step
+is never relabelled. Idempotency is a unique partial index on outbox.effect_key holding
+"workflow:step_index", threaded from the session through the gateway dispatcher into deliver_inbox, so a
+crash between the delivery and the status write re-runs the step without putting the message in the inbox
+twice. Session.submit now takes optional workflow coordinates that land on the audit row, and
+workflow_steps.output persists the artifact id a step produced so a later "$<index>" reference resolves
+after a restart. The dashboard gained section 5 (create a read/save/deliver workflow, step table with
+statuses, Resume button); sections 1-4 including the evidence panel are unchanged and the frozen
+benchmark files were not touched. Suite is 42 passing (34 existing plus 8 resumption tests); the one
+documented gap is that a report has no natural key, so a crash exactly between a save_report step and its
+status write can leave an orphan report.
+
+Actions:
+* Added agentgate/workflow.py (create, resume, describe, $index chaining)
+* Edited agentgate/store.py: outbox.effect_key + unique partial index, workflow_steps.output, in-place
+  ALTER migration for existing databases, STEP_STATUSES enforced in set_step, named-column INSERTs
+* Edited agentgate/gateway.py: Session.submit takes workflow_id/step_index, forwards them to record_audit
+  and derives the effect key; _dispatch passes it to the tool
+* Edited agentgate/tools.py: deliver_inbox accepts effect_key
+* Added tests/test_workflow_resumption.py (8 tests) and agentgate/__init__.py module list
+* Added dashboard section 5 in app.py; updated README.md, docs/RUN.md and the AGENTS.md test baseline
+* Ran "python -m pytest" (42 passed), a Streamlit AppTest drive of create/Resume including a mid-session
+  edit of data/policies.json (restored byte-identical, git status clean), and a manual SQLite read of the
+  audit rows proving both fingerprints on one workflow
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=work/workflow
+repo_root=C:\Users\Tanush Garg\Documents\Qoder\2026-10-29\376c904f\team-9-11-workflow
+worktree=team-9-11-workflow
+parent_agent=none
