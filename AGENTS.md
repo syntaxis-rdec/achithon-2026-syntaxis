@@ -42,7 +42,7 @@ Streamlit, Pydantic, SQLite, pytest. Local only. Start with `README.md`, then `d
    under `## Requests` in your `NOTES.md` and continue with a fallback.
 
 5. **Verify before claiming.** Run `.venv\Scripts\python.exe -m pytest` before you commit. The baseline
-   is 34 passing. A green claim without a run is not a claim.
+   is 41 passing. A green claim without a run is not a claim.
 
 6. **Commit small.** `type: what now works`, present tense, no `wip`. Stage files by name, never
    `git add -A` from the root.

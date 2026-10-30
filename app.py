@@ -2,7 +2,8 @@
 
 Every tool call goes through a Session held in a registry, so read history survives
 clicks. Policy files are re-read on every run. Declassification is a separate store
-action, not a tool, and the page says so.
+action, not a tool, and the page says so. Workflows store proposals only; the Resume
+button re-reads the rulebook from disk and re-decides every step that is not done.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from agentgate import tools
+from agentgate import tools, workflow
 from agentgate.gateway import declassify
 from agentgate.models import ActionRequest
 from agentgate.policy import load_policy_set
@@ -21,13 +22,15 @@ from agentgate.store import Store
 
 ROOT = Path(__file__).resolve().parent
 DB = ROOT / "data" / "agentgate-v3.sqlite"
+PRINCIPALS = ROOT / "data" / "principals.json"
+POLICIES_FILE = ROOT / "data" / "policies.json"
 
 
 def world():
     """Fresh store handle and fresh policy read on every rerun. No caching."""
     store = Store(DB)
     store.load_documents_from_dir(ROOT / "data" / "documents")
-    policies = load_policy_set(ROOT / "data" / "principals.json", ROOT / "data" / "policies.json")
+    policies = load_policy_set(PRINCIPALS, POLICIES_FILE)
     return store, policies
 
 
@@ -193,3 +196,81 @@ if report:
         st.success("All 32 scenarios matched their frozen expectations.")
     st.caption(f"scenario file `{report['scenario_file_sha256']}` · policy "
                f"`{report['policy_fingerprint']}`")
+
+st.divider()
+st.subheader("5. Workflow resumption")
+st.caption(
+    "A workflow is a stored list of proposals — actor, tool, sources, recipient — not a stored "
+    "decision. Resume re-reads `data/policies.json` from disk, walks the steps from the first one "
+    "that is not done, and puts each through the same gateway a live click uses. Tighten a rule "
+    "while the app is closed and an already-queued step is refused; the steps behind it are marked "
+    "halted instead of quietly skipped."
+)
+
+builder, viewer = st.columns([1, 2])
+with builder:
+    wf_actor = st.selectbox("Workflow actor",
+                            [p.id for p in policies.principals if p.kind != "recipient"],
+                            key="wf_actor")
+    known_docs = state.list_documents()
+    wf_doc = st.selectbox(
+        "Document", [d.id for d in known_docs], key="wf_doc",
+        format_func=lambda i: f"{i} — {next(d.title for d in known_docs if d.id == i)} "
+                              f"[{next(d.classification for d in known_docs if d.id == i)}]")
+    wf_recipient_choices = [p for p in policies.principals if p.kind != "actor"]
+    wf_recipient = st.selectbox(
+        "Recipient", [p.id for p in wf_recipient_choices],
+        index=next((i for i, p in enumerate(wf_recipient_choices) if p.kind == "recipient"), 0),
+        key="wf_recipient")
+    st.caption("Three steps: read the document, save a report from it, deliver that report. "
+               "Step 3 points at step 1's output, which does not have an id until it runs.")
+    if st.button("Create 3-step workflow", key="wf_create", type="primary"):
+        created = workflow.create(
+            state,
+            [ActionRequest(actor_id=wf_actor, tool="read_document", resource_id=wf_doc),
+             ActionRequest(actor_id=wf_actor, tool="save_report", source_ids=[wf_doc]),
+             ActionRequest(actor_id=wf_actor, tool="deliver_inbox", resource_id="$1",
+                           recipient=wf_recipient)],
+            title=f"{wf_actor}: read {wf_doc}, summarise, send to {wf_recipient}")
+        st.session_state["wf_pick"] = created
+        st.session_state.pop("wf_report", None)
+        st.rerun()
+
+with viewer:
+    saved = state.list_workflows()
+    if not saved:
+        st.info("Create a workflow on the left, then resume it.")
+    else:
+        ids = [item["id"] for item in saved]
+        by_id = {item["id"]: item for item in saved}
+        chosen = st.selectbox(
+            "Saved workflow", ids, index=0, key="wf_pick",
+            format_func=lambda i: f"{i} — {by_id[i]['status']} · "
+                                  f"{by_id[i]['payload'].get('title', '')}")
+        steps = state.steps_for(chosen)
+        st.dataframe(
+            pd.DataFrame([{"#": step["idx"], "Proposal": workflow.describe(step),
+                           "Status": step["status"],
+                           "Why": step["reason"][:110] or "not attempted yet"}
+                          for step in steps]),
+            hide_index=True, height=160)
+        st.caption(f"Rulebook on disk right now: `{policies.fingerprint}`")
+        if st.button("Resume", key="wf_resume"):
+            st.session_state["wf_report"] = workflow.resume(state, chosen, PRINCIPALS,
+                                                            POLICIES_FILE)
+            st.rerun()
+
+        result = st.session_state.get("wf_report")
+        if result and result["workflow_id"] == chosen:
+            if result["status"] == "completed":
+                st.success(f"Ran to completion under `{result['policy_fingerprint']}`.")
+            else:
+                st.error(f"Stopped at the first block under `{result['policy_fingerprint']}`.")
+            if not result["steps"]:
+                st.caption("Nothing was re-run — every step is already done. A done step is a "
+                           "record of an effect that happened, not a stored permission.")
+            for step in result["steps"]:
+                st.caption(f"**{step['idx']} · {step['step']}** — {step['status']} · "
+                           f"{step['rule_id']} — {step['reason']}")
+            st.caption("The audit trail above carries the workflow id, the step index and the "
+                       "policy fingerprint of the run that decided it.")

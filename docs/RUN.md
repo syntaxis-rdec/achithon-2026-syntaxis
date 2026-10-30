@@ -42,6 +42,16 @@ State lives in `data/agentgate-v3.sqlite`. **Reset demo data** in the dashboard 
    A report built before the tamper is refused with `RULE-PROVENANCE-TAMPERED`.
 7. Policy change: edit `data/policies.json`, click any widget, do the action again → the new rule
    applies without a restart.
+8. **Workflow resumption** (section 5): choose an actor, a document and a recipient, create the three-step
+   workflow — read the document, save a report from it, deliver that report — and press Resume. It runs to
+   completion and the inbox gains exactly one message. Change the recipient to
+   `vendor@outside.example` and resume a fresh workflow → the delivery step is blocked and the steps behind
+   it are marked halted; nothing reaches the inbox. Now tighten `SAVE-ANALYST` to `"PUBLIC"` in
+   `data/policies.json`, create one more workflow and resume → the read step still runs, the save step is
+   refused with `RULE-SOURCE-TOO-SENSITIVE`, the delivery is halted. Each audit row carries the workflow id,
+   the step index and the fingerprint of the rulebook that decided it, so the two runs are distinguishable
+   from SQLite alone. Pressing Resume on a finished workflow re-runs nothing: a `done` step is a record of
+   an effect, not a stored permission, and a retried delivery is keyed by step so it cannot appear twice.
 
 ## Evidence
 

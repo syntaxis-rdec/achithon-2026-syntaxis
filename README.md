@@ -30,14 +30,17 @@ Then open the local URL Streamlit prints. Full walkthrough: [docs/RUN.md](docs/R
    because policy never reads document text.
 4. **Release.** A non-officer tries to lower a label — refused. A security officer does it with a written
    justification — a new linked copy appears, the original is untouched.
-5. **Evidence.** The 32-scenario table runs live: decisions matched, unauthorized executions, false allows.
+5. **Resumption.** A saved workflow is a list of proposals, not a list of permissions. Resume re-reads the
+   rulebook from disk and re-decides every step that is not done; a rule tightened while the app was closed
+   blocks the pending step and halts the ones behind it.
+6. **Evidence.** The 32-scenario table runs live: decisions matched, unauthorized executions, false allows.
 
 ## Evidence
 
 ```bash
 python -m benchmark.runner      # 32 frozen scenarios → benchmark/results.json
 python -m benchmark.mutations   # breaks the gateway six ways; every break must be detected
-pytest                          # 34 tests
+pytest                          # 41 tests
 ```
 
 Current result: **32/32 scenarios matched, 0 unauthorized executions, 0 false allows, 0 false denies,
@@ -52,6 +55,7 @@ independently authored; the mutation check is what makes the number worth readin
 |---|---|
 | `agentgate/policy.py` | The only authority. Deterministic, blind to document text, deny by default |
 | `agentgate/gateway.py` | Binds identity, evaluates, executes only on allow, audits every decision, handles releases |
+| `agentgate/workflow.py` | Runner: stores ordered proposals, re-decides every pending step on resume, halts behind a block |
 | `agentgate/labels.py` | Classification lattice; derived work inherits, never downgrades |
 | `agentgate/tools.py` | Three protected tools; refuse to run without the gateway's capability token |
 | `agentgate/store.py` | SQLite: documents, artifacts, audit, inbox, workflows, read history |
