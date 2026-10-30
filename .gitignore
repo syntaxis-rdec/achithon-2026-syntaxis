@@ -17,6 +17,7 @@ __pycache__/
 *.db
 data/outbox/
 agent-trace/
+exports/
 
 # Editors / OS
 .vscode/
