@@ -1279,3 +1279,28 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+
+## [2026-10-31T01:46:28+05:30] Addressed frontend fabrication query and replaced template mockups
+
+User Prompt (verbatim, secrets redacted):
+Is the frontend fabricated?
+
+Agent Response Summary:
+Answered frankly and transparently regarding the origin of the uploaded HTML template. Clarified that while the core decision metrics, audit events, SQLite documents, Merkle hash chains, and benchmark proofs were 100% real and computed from the backend, the uploaded HTML file had retained fabricated placeholder elements (hardcoded 14-day activity numbers [8, 12, 9...], dummy policy codes like IDN-01, fictional user Priya Sharma, and static notification text). Systematically replaced all residual mockups in web/templates/index.html with authentic computed data: the activity chart now dynamically buckets real SQLite audit events, the policy cards render the 8 real rules from data/policies.json, the notification bell populates from real recent blocked decisions, and the user profile reflects the session gatekeeper. Verified all 10 web tests and 12 rehearsal beats remain green.
+
+Actions:
+* Audited web/templates/index.html for hardcoded mockup values vs live SQLite bindings
+* Updated web/app.py _rules_in_force to expose real rule_items from data/policies.json
+* Replaced hardcoded [8,12,9...] array in drawActivityChart with dynamic SQLite event bucketing
+* Dynamically bound notification bell to actual blocked decisions in the audit table
+* Replaced fictional Priya Sharma profile with SecOps Gatekeeper operator identity
+* Populated Security Policies tab with real active rules (READ-ANALYST, SAVE-ANALYST, etc.)
+* Ran pytest (10 passed in 0.97s) and demo/rehearse.py (12/12 beats green in 7.2s)
+* Repackaged agentgate-PS08-submission.zip (100 files, 0.30 MB)
+* Committed and pushed commit c3f90e7 to origin/main
+
+Context:
+tool=Antigravity
+problem_id=PS08
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-

@@ -68,12 +68,21 @@ def _rules_in_force(folder: Path) -> dict | None:
     except (OSError, ValueError):
         return None
     granted: dict[str, int] = Counter()
+    rules_list = []
     for rule in policies.rules:
         granted[rule.tool] += 1
+        rules_list.append({
+            "id": rule.id,
+            "role": rule.role,
+            "tool": rule.tool,
+            "max": rule.max_classification,
+            "description": rule.description,
+        })
     return {"fingerprint": policies.fingerprint,
             "rules": len(policies.rules),
             "principals": len(policies.principals),
-            "grants": dict(granted)}
+            "grants": dict(granted),
+            "rule_items": rules_list}
 
 
 def snapshot(data: Path | None = None) -> dict:
