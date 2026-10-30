@@ -76,7 +76,13 @@ def seed(target: Path | None = None) -> dict:
     demo_state = data / "demo_seed.json"
 
     shutil.copyfile(HERE / "policies_default.json", policies_file)
-    db.unlink(missing_ok=True)
+    try:
+        db.unlink(missing_ok=True)
+    except PermissionError:
+        raise SystemExit(
+            f"{db} is locked: a dashboard session still holds it.\n"
+            "Windows keeps the file busy while a browser tab is attached, so stop streamlit\n"
+            "(Ctrl-C in its window) or close the tab, then run this again.")
     demo_state.unlink(missing_ok=True)
 
     state = Store(db)
