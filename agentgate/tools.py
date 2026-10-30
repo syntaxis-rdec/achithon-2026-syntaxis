@@ -23,6 +23,14 @@ def _require_gate(gate) -> None:
         raise PermissionError("tools are only callable through the gateway")
 
 
+def _excerpt(text: str, limit: int = 120) -> str:
+    """First non-empty line, or a marker. An empty document must not crash after an ALLOW."""
+    for line in text.splitlines():
+        if line.strip():
+            return line.strip()[:limit]
+    return "(no content)"
+
+
 def read_document(actor_id: str, doc_id: str, state, gate=None) -> str:
     _require_gate(gate)
     EXECUTIONS.append(f"read_document:{doc_id}")
@@ -47,8 +55,7 @@ def save_report(actor_id: str, source_doc_ids: list[str], title: str | None, sta
     ])
     # The title is derived, never free text from the proposer: a title is a content channel.
     derived_title = "Summary of " + ", ".join(d.id for d in docs)
-    summary = "\n".join(f"- {d.title} ({d.classification}): {d.body.splitlines()[0][:120]}"
-                        for d in docs)
+    summary = "\n".join(f"- {d.title} ({d.classification}): {_excerpt(d.body)}" for d in docs)
     body = (
         f"{summary}\n\nProvenance: {', '.join(derived.provenance)}\n"
         f"Classification inherited from the most sensitive source: {derived.classification}"

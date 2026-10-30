@@ -350,6 +350,34 @@ repo_root=C:\Users\Tanush Garg\Documents\Qoder\2026-10-29\376c904f\team-9-11
 worktree=main
 parent_agent=none
 
+## [2026-10-30T16:20:00+05:30] Merged makhdum task 2 pack, fixed the empty-document crash they reported
+
+User Prompt (verbatim, secrets redacted):
+"Check the repo and who did their work. And BTW are you sure you cleaned the repo well? Makhdum says he did the work, give the new work."
+
+Agent Response Summary:
+Audited the lanes: Makhdum had pushed twice more (property-based injection pack, 33 tests) and reported a
+real defect in my code — a document with an empty body passed every policy check and then raised inside
+save_report after the gateway had already recorded an ALLOW. Merged their branch, fixed the crash with an
+_excerpt helper that returns a marker instead of indexing an empty list, and added a regression test that
+reproduces the original failure path. Issued TASK-2 for their lane: a policy integrity guard that denies
+and audits mid-session rulebook swaps, plus a fourteen-attack red-team harness. Evidence stayed intact:
+32/32 scenarios, all six mutations detected, 76 tests passing.
+
+Actions:
+* git merge of origin/lane/makhdum (tests/test_injection.py, NOTES.md, log.txt)
+* Fixed agentgate/tools.py to use _excerpt; added test_an_empty_document_does_not_crash_after_an_allow
+* Wrote team/makhdum/TASK-2.md and updated team/README.md lane status
+* Ran pytest (76 passed), benchmark.runner (32/32) and benchmark.mutations (all detected)
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=main
+repo_root=C:\Users\Tanush Garg\Documents\Qoder\2026-10-29\376c904f\team-9-11
+worktree=main
+parent_agent=none
+
 ## [2026-10-30T15:39:28+05:30] Lane verified against merged main; notes corrected for stale test counts
 
 User Prompt (verbatim, secrets redacted):

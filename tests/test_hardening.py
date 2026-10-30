@@ -23,6 +23,18 @@ def test_tools_refuse_direct_calls(state):
         tools.deliver_inbox("intern", "x", "vendor@outside.example", state)
 
 
+def test_an_empty_document_does_not_crash_after_an_allow(state, policies):
+    """Reported by the makhdum lane: the tool indexed the first line of an empty body."""
+    from agentgate.models import Document
+    state.add_document(Document(id="doc-empty", title="Empty", classification="INTERNAL",
+                                owner="ops", body=""))
+    decision, artifact_id = Session(state, policies, "analyst").submit(
+        ActionRequest(tool="save_report", source_ids=["doc-empty"]))
+    assert decision.allowed
+    assert "(no content)" in state.get_artifact(artifact_id).body
+    assert state.list_audit()[0]["allowed"] == 1
+
+
 def test_duplicate_role_tool_rules_are_rejected(tmp_path):
     principals = json.loads((ROOT / "data" / "principals.json").read_text())
     rules = json.loads((ROOT / "data" / "policies.json").read_text())
