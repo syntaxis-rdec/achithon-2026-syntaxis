@@ -112,10 +112,4 @@ Use the submission URL stated by the selected challenge. Do not guess a URL or s
 
 Before using this README as a public project page, replace the placeholder problem titles with the official titles and link each row to the correct participant-facing specification. Add only verified setup and submission information. Keep challenge-specific facts in the relevant `PS##/` folder rather than duplicating them as assumptions in shared instructions.
 
----
-
-<div align="center">
-
-**Choose carefully. Confirm the cleanup scope. Build to the selected specification.**
-
-</div>
+demo msg

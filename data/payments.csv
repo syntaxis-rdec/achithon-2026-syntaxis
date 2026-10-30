@@ -1,0 +1,4 @@
+payment_id,customer_name,amount,payment_date,reference,description
+PAY001,ABC Trader,5000,2026-10-02,REF001,Payment for INV001
+PAY002,XYZ Stores,8000,2026-10-04,REF002,Invoice payment
+PAY003,Unknown Customer,2000,2026-10-06,,Bank transfer
