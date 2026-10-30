@@ -237,6 +237,12 @@ with right:
     st.subheader("3. Audit trail and mock inbox")
     audit = state.list_audit()
     if audit:
+        from agentgate.audit_chain import verify_audit_chain
+        chain_valid, chain_err, chain_count = verify_audit_chain(state)
+        if chain_valid and chain_count > 0:
+            st.caption(f"🛡️ **Cryptographic Merkle Chain**: Verified ({chain_count} tamper-evident blocks)")
+        elif not chain_valid:
+            st.error(f"⚠️ Audit Tamper Alert: {chain_err}")
         table = pd.DataFrame(audit)[["ts", "actor", "origin", "tool", "resource", "recipient",
                                      "allowed", "rule_id", "reason", "policy_hash"]]
         table["allowed"] = table["allowed"].map({1: "ALLOWED", 0: "BLOCKED"})

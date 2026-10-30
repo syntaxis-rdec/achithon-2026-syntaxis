@@ -836,3 +836,82 @@ tool=Antigravity
 problem_id=PS08
 branch=main
 repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+
+## [2026-10-30T23:35:00+05:30] Canary honeytoken and paraphrase exfiltration trap
+
+User Prompt (verbatim, secrets redacted):
+Build the Canary Honeytoken & Paraphrase Exfiltration Trap in agentgate/canary.py and write comprehensive tests in tests/test_canary.py.
+
+Requirements:
+1. In agentgate/canary.py:
+   - CanaryRegistry / CanaryTrap: generates and registers honeytokens mapped to sensitive document IDs (e.g. format: CANARY-{doc_id}-{token}).
+   - generate_canaries_for_doc(doc_id: str, count: int = 1) -> list[str]
+   - inject_canaries_into_text(text: str, canaries: list[str]) -> str: embeds canary tokens into document content without changing front matter.
+   - check_canary_leak(text: str, read_docs: list[str], registry: CanaryRegistry) -> list[str]: scans text for any canary token associated with any document the actor has read.
+2. In tests/test_canary.py:
+   - Test canary generation and registration.
+   - Test detecting exact canary leak in outgoing text (e.g. in email message or report body).
+   - Test that canaries for documents the actor NEVER read are not flagged (isolation).
+   - Test that clean text returns empty leak list.
+3. Verify by running:
+   & ".\.venv\Scripts\python.exe" -m pytest tests/test_canary.py
+4. Ensure all existing tests in the repo still pass:
+   & ".\.venv\Scripts\python.exe" -m pytest
+5. Report back when complete with your test results and summary of changes.
+
+Agent Response Summary:
+Built agentgate/canary.py providing CanaryRegistry and CanaryTrap for honeytoken generation, document injection, actor-scoped leak detection, and paraphrase exfiltration trapping. Honeytokens format as CANARY-{doc_id}-{suffix} and inject cleanly into document content without modifying front matter or metadata. check_canary_leak isolates detection strictly to documents the actor has read history for, ensuring unread document tokens and clean messages are never flagged. Added tests/test_canary.py with 25 tests covering generation, format, real corpus injection, exact leaks in emails and reports, isolation, and paraphrase trapping. Verification passed completely: 25/25 canary tests pass in 0.07s, full test suite is 236 passed (1 xfailed), benchmark remains 32/32, and demo rehearsal runs 12/12 beats green.
+
+Actions:
+* Created agentgate/canary.py
+* Created tests/test_canary.py
+* Ran .\.venv\Scripts\python.exe -m pytest tests/test_canary.py (25 passed in 0.07s)
+* Ran .\.venv\Scripts\python.exe -m pytest (236 passed, 1 xfailed in 39s)
+* Ran python -m benchmark.runner (32/32) and python demo/rehearse.py (12/12 beats green)
+
+Context:
+tool=Antigravity
+problem_id=PS08
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+
+## [2026-10-30T23:37:30+05:30] Build Cryptographic Merkle Audit Hash Chain and verification suite
+
+User Prompt (verbatim, secrets redacted):
+Build the Cryptographic Merkle Audit Hash Chain in agentgate/audit_chain.py and write comprehensive tests in tests/test_audit_chain.py.
+
+Requirements:
+1. In agentgate/audit_chain.py:
+   - compute_entry_hash(prev_hash: str, audit_entry: dict) -> str: generates SHA-256 of canonical fields + prev_hash. Genesis row uses "0"*64 as prev_hash.
+   - verify_audit_chain(store: Store) -> tuple[bool, str, int]: verifies that all audit rows in chronological order (id ASC) have an intact cryptographic hash link. Returns (is_valid, error_description, verified_count).
+   - If store has audit entries without hashes, compute or verify cleanly.
+2. In tests/test_audit_chain.py:
+   - Test clean chain verification passes.
+   - Test modifying an audited field in SQLite causes verification failure.
+   - Test deleting an audit row breaks the chain.
+   - Test empty audit trail is valid (0 verified).
+3. Verify by running:
+   & ".\.venv\Scripts\python.exe" -m pytest tests/test_audit_chain.py
+4. Ensure all existing tests in the repo still pass:
+   & ".\.venv\Scripts\python.exe" -m pytest
+5. Report back when complete with your test results and summary of changes.
+
+Agent Response Summary:
+Built agentgate/audit_chain.py implementing cryptographic Merkle audit hash chaining with SHA-256 hashing over canonical audit fields and the previous entry hash, using 64 zero characters ("0"*64) as the well-known genesis link. Integrated live automatic hash chaining into Store.record_audit, added schema migration for existing audit tables, and implemented compute_audit_chain and verify_audit_chain with full tamper and deletion detection. Created tests/test_audit_chain.py covering clean chain verification, SQLite field modification failure, row deletion detection (genesis and intermediate), empty audit trail validity, determinism, and backfilling unhashed entries. All 10 audit chain tests passed in 0.51s, the complete test suite passed with 246 passed (1 xfailed), and demo rehearsal ran 12/12 beats green in 4.5s.
+
+Actions:
+* Created agentgate/audit_chain.py with compute_entry_hash, compute_audit_chain, and verify_audit_chain
+* Updated agentgate/__init__.py to export audit_chain
+* Updated agentgate/store.py with audit chain migration, automatic live hashing in record_audit, and verify_audit_chain helper
+* Created tests/test_audit_chain.py with 10 comprehensive tests
+* Ran pytest tests/test_audit_chain.py (10 passed in 0.51s)
+* Ran pytest full suite (246 passed, 1 xfailed in 39.88s)
+* Ran demo/rehearse.py (12/12 beats green in 4.5s)
+
+Context:
+tool=Antigravity
+problem_id=PS08
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-

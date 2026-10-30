@@ -17,6 +17,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .audit_chain import GENESIS_HASH, compute_entry_hash
 from .models import Artifact, Document, SecurityLabel
 
 SCHEMA = """
@@ -32,7 +33,8 @@ CREATE TABLE IF NOT EXISTS audit(
   origin TEXT NOT NULL DEFAULT 'human', tool TEXT NOT NULL, resource TEXT,
   recipient TEXT, allowed INTEGER NOT NULL, rule_id TEXT NOT NULL,
   reason TEXT NOT NULL, label TEXT, policy_hash TEXT, workflow_id TEXT,
-  step_index INTEGER, justification TEXT DEFAULT '');
+  step_index INTEGER, justification TEXT DEFAULT '',
+  prev_hash TEXT DEFAULT '', entry_hash TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS outbox(
   id INTEGER PRIMARY KEY AUTOINCREMENT, artifact_id TEXT NOT NULL,
   recipient TEXT NOT NULL, classification TEXT DEFAULT '', ts TEXT NOT NULL,
@@ -94,6 +96,10 @@ class Store:
             self.conn.execute("ALTER TABLE outbox ADD COLUMN effect_key TEXT")
         if "output" not in self._columns("workflow_steps"):
             self.conn.execute("ALTER TABLE workflow_steps ADD COLUMN output TEXT DEFAULT ''")
+        if "prev_hash" not in self._columns("audit"):
+            self.conn.execute("ALTER TABLE audit ADD COLUMN prev_hash TEXT DEFAULT ''")
+        if "entry_hash" not in self._columns("audit"):
+            self.conn.execute("ALTER TABLE audit ADD COLUMN entry_hash TEXT DEFAULT ''")
 
     # -- documents ---------------------------------------------------------
     def add_document(self, doc: Document) -> None:
@@ -198,15 +204,47 @@ class Store:
                      recipient: str | None, allowed: bool, rule_id: str, reason: str,
                      label: SecurityLabel | None, policy_hash: str = "",
                      workflow_id: str | None = None, step_index: int | None = None,
-                     justification: str = "") -> None:
+                     justification: str = "", prev_hash: str | None = None,
+                     entry_hash: str | None = None) -> None:
+        timestamp = now()
+        label_str = json.dumps(label.model_dump()) if label else None
+        just_str = justification[:500]
+
+        if prev_hash is None or entry_hash is None:
+            last = self.conn.execute(
+                "SELECT entry_hash FROM audit ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            prev_hash = last["entry_hash"] if last and last["entry_hash"] else GENESIS_HASH
+            entry_dict = {
+                "ts": timestamp,
+                "actor": actor,
+                "origin": origin,
+                "tool": tool,
+                "resource": resource,
+                "recipient": recipient,
+                "allowed": int(allowed),
+                "rule_id": rule_id,
+                "reason": reason,
+                "label": label_str,
+                "policy_hash": policy_hash,
+                "workflow_id": workflow_id,
+                "step_index": step_index,
+                "justification": just_str,
+            }
+            entry_hash = compute_entry_hash(prev_hash, entry_dict)
+
         self.conn.execute(
             "INSERT INTO audit(ts,actor,origin,tool,resource,recipient,allowed,rule_id,reason,"
-            "label,policy_hash,workflow_id,step_index,justification)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (now(), actor, origin, tool, resource, recipient, int(allowed), rule_id, reason,
-             json.dumps(label.model_dump()) if label else None, policy_hash,
-             workflow_id, step_index, justification[:500]))
+            "label,policy_hash,workflow_id,step_index,justification,prev_hash,entry_hash)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (timestamp, actor, origin, tool, resource, recipient, int(allowed), rule_id, reason,
+             label_str, policy_hash, workflow_id, step_index, just_str,
+             prev_hash, entry_hash))
         self.conn.commit()
+
+    def verify_audit_chain(self, auto_compute: bool = False) -> tuple[bool, str, int]:
+        from .audit_chain import verify_audit_chain
+        return verify_audit_chain(self, auto_compute=auto_compute)
 
     def list_audit(self, limit: int = 200) -> list[dict]:
         rows = self.conn.execute("SELECT * FROM audit ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
