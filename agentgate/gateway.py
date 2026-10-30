@@ -1,8 +1,7 @@
 """Gateway: bind identity, evaluate first, execute only on allow, audit everything.
 
 The session owns the actor and the origin. A request cannot choose who it is.
-Reads are recorded per session; a later report is forced to include every source
-the session actually read, so a source cannot be hidden to lower a label.
+Read history is keyed by actor, so closing a session does not launder a source.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ class Session:
         bound = request.model_copy(update={"actor_id": self.actor_id, "origin": self.origin})
 
         if bound.tool == "save_report":
-            tainted = self.state.reads_for(self.id)
+            tainted = self.state.reads_for(self.actor_id)
             effective = list(dict.fromkeys(list(bound.source_ids) + tainted))
             if set(effective) != set(bound.source_ids):
                 bound = bound.model_copy(update={"source_ids": effective})
@@ -46,18 +45,20 @@ class Session:
         if decision.allowed:
             result = _dispatch(bound, self.state)
             if bound.tool == "read_document" and bound.resource_id:
-                self.state.record_read(self.id, bound.resource_id)
+                self.state.record_read(self.actor_id, bound.resource_id)
         return decision, result
 
 
 def _dispatch(request: ActionRequest, state):
     if request.tool == "read_document":
-        return tools.read_document(request.actor_id, request.resource_id or "", state)
+        return tools.read_document(request.actor_id, request.resource_id or "", state,
+                                   gate=tools._GATE)
     if request.tool == "save_report":
-        return tools.save_report(request.actor_id, request.source_ids, request.title, state)
+        return tools.save_report(request.actor_id, request.source_ids, request.title, state,
+                                 gate=tools._GATE)
     if request.tool == "deliver_inbox":
         return tools.deliver_inbox(request.actor_id, request.resource_id or "",
-                                   request.recipient or "", state)
+                                   request.recipient or "", state, gate=tools._GATE)
     raise ValueError(f"unknown tool {request.tool}")
 
 
@@ -81,14 +82,25 @@ def declassify(state, policies: PolicySet, officer_id: str, artifact_id: str,
                            resource=artifact_id, recipient=None, allowed=False,
                            rule_id="RULE-DECLASSIFY-JUSTIFICATION",
                            reason="Blocked: a written justification of at least 15 characters is required.",
-                           label=original.label, policy_hash=policies.fingerprint)
+                           label=original.label, policy_hash=policies.fingerprint,
+                           justification=justification)
         raise ValueError("justification too short")
+    if not labels.at_least(officer.clearance, original.label.classification):
+        state.record_audit(actor=officer_id, origin="human", tool="declassify",
+                           resource=artifact_id, recipient=None, allowed=False,
+                           rule_id="RULE-DECLASSIFY-CLEARANCE",
+                           reason=(f"Blocked: {officer_id} holds {officer.clearance} and may not "
+                                   f"handle {original.label.classification} material."),
+                           label=original.label, policy_hash=policies.fingerprint,
+                           justification=justification)
+        raise PermissionError("officer clearance below the artifact classification")
     if target not in labels.ORDER or labels.rank(target) >= labels.rank(original.label.classification):
         state.record_audit(actor=officer_id, origin="human", tool="declassify",
                            resource=artifact_id, recipient=None, allowed=False,
                            rule_id="RULE-DECLASSIFY-DIRECTION",
                            reason="Blocked: declassification may only lower a classification.",
-                           label=original.label, policy_hash=policies.fingerprint)
+                           label=original.label, policy_hash=policies.fingerprint,
+                           justification=justification)
         raise ValueError("target is not lower than the current classification")
 
     new_label = original.label.model_copy(deep=True)
@@ -103,6 +115,6 @@ def declassify(state, policies: PolicySet, officer_id: str, artifact_id: str,
         recipient=None, allowed=True, rule_id="DECLASSIFY-OFFICER",
         reason=(f"Allowed: {officer_id} released a copy of {artifact_id} from "
                 f"{original.label.classification} to {target}. New artifact {child.id}; "
-                f"justification recorded; original untouched."),
-        label=child.label, policy_hash=policies.fingerprint)
+                f"original untouched."),
+        label=child.label, policy_hash=policies.fingerprint, justification=justification)
     return child

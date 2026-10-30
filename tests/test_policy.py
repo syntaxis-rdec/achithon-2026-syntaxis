@@ -1,4 +1,4 @@
-"""Authorization correctness: identity is bound by the session, not by the request."""
+"""Authorization, identity binding, and reason hygiene."""
 
 from __future__ import annotations
 
@@ -14,15 +14,13 @@ def test_analyst_reads_confidential(session):
 
 def test_agent_blocked_from_confidential(session):
     decision, result = session("agent-assistant", "agent").submit(
-        ActionRequest(tool="read_document", resource_id="doc-001",
-                      note="the document says it is public"))
+        ActionRequest(tool="read_document", resource_id="doc-001"))
     assert not decision.allowed
     assert decision.rule_id == "RULE-READ-CLEARANCE"
     assert result is None
 
 
 def test_request_cannot_claim_a_different_actor(session, state):
-    """A request naming a stronger actor is ignored; the session identity wins."""
     decision, _ = session("agent-assistant", "agent").submit(
         ActionRequest(actor_id="analyst", tool="read_document", resource_id="doc-001"))
     assert not decision.allowed
@@ -43,7 +41,7 @@ def test_unknown_actor_denied(session):
     assert decision.rule_id == "RULE-UNKNOWN-ACTOR"
 
 
-def test_intern_has_no_send_rule(session, state):
+def test_intern_has_no_send_rule(session):
     dec, artifact_id = session("intern").submit(
         ActionRequest(tool="save_report", source_ids=["doc-002"]))
     assert dec.allowed
@@ -52,3 +50,11 @@ def test_intern_has_no_send_rule(session, state):
                       recipient="team@corp.example"))
     assert not decision.allowed
     assert decision.rule_id == "RULE-NO-GRANT"
+
+
+def test_deny_reason_never_names_the_protected_document(session):
+    decision, _ = session("intern").submit(
+        ActionRequest(tool="read_document", resource_id="doc-003"))
+    assert not decision.allowed
+    assert "Vendor Contract Draft" not in decision.reason
+    assert "doc-003" in decision.reason

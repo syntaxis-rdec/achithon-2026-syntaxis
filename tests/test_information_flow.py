@@ -1,10 +1,11 @@
-"""Information flow, taint, tamper detection, and the execution barrier."""
+"""Information flow, taint, tamper handling, and the execution barrier."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 from agentgate import tools
+from agentgate.gateway import Session
 from agentgate.models import ActionRequest
 from agentgate.store import Store
 
@@ -19,7 +20,6 @@ def test_report_inherits_highest_source_label(session, state):
 
 
 def test_hidden_source_is_recovered_from_read_history(session, state):
-    """Read confidential, cite only public: the report still comes out CONFIDENTIAL."""
     reader = session("analyst")
     read, _ = reader.submit(ActionRequest(tool="read_document", resource_id="doc-001"))
     assert read.allowed
@@ -31,7 +31,7 @@ def test_hidden_source_is_recovered_from_read_history(session, state):
     assert set(artifact.label.provenance) == {"doc-001", "doc-002"}
 
 
-def test_free_text_title_cannot_carry_a_secret(session, state):
+def test_title_cannot_carry_a_secret(session, state):
     decision, artifact_id = session("intern").submit(
         ActionRequest(tool="save_report", source_ids=["doc-002"],
                       title="Q3 revenue is 4.2 crore — confidential"))
@@ -41,7 +41,7 @@ def test_free_text_title_cannot_carry_a_secret(session, state):
     assert artifact.title.startswith("Summary of doc-002")
 
 
-def test_tampered_document_is_frozen_at_its_original_label(state, policies, tmp_path, session):
+def test_tampered_document_is_frozen_at_its_original_label(tmp_path, policies):
     root = Path(__file__).resolve().parent.parent
     docs = tmp_path / "docs"
     docs.mkdir()
@@ -54,9 +54,8 @@ def test_tampered_document_is_frozen_at_its_original_label(state, policies, tmp_
         original.replace("classification: RESTRICTED", "classification: INTERNAL"), encoding="utf-8")
     store.load_documents_from_dir(docs)
 
-    assert store.is_tampered("doc-003")
+    assert store.integrity_of("doc-003") == "tampered"
     assert store.get_document("doc-003").classification == "RESTRICTED"
-    from agentgate.gateway import Session
     decision, _ = Session(store, policies, "analyst").submit(
         ActionRequest(tool="read_document", resource_id="doc-003"))
     assert not decision.allowed
@@ -85,9 +84,10 @@ def test_delivery_allowed_to_matching_clearance(session, state):
                       recipient="manager@corp.example"))
     assert decision.allowed
     assert len(state.list_outbox()) == 1
+    assert state.list_outbox()[0]["classification"] == "INTERNAL"
 
 
-def test_blocked_actions_never_reach_a_tool(session, state):
+def test_blocked_actions_never_reach_a_tool(session):
     dec, artifact_id = session("analyst").submit(
         ActionRequest(tool="save_report", source_ids=["doc-004"]))
     assert dec.allowed

@@ -7,6 +7,7 @@ import pytest
 from agentgate import tools
 from agentgate.gateway import Session
 from agentgate.policy import load_policy_set
+from agentgate.sessions import SessionRegistry
 from agentgate.store import Store
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -29,6 +30,11 @@ def session(state, policies):
     def make(actor: str = "analyst", origin: str = "human") -> Session:
         return Session(state, policies, actor, origin)
     return make
+
+
+@pytest.fixture()
+def registry(state, policies):
+    return SessionRegistry(state, policies)
 
 
 @pytest.fixture(autouse=True)

@@ -142,3 +142,57 @@ branch=main
 repo_root=C:\Users\Tanush Garg\Documents\Qoder\2026-10-29\376c904f\team-9-11
 worktree=main
 parent_agent=none
+
+## [2026-10-30T13:20:00+05:30] Five outside advisories scored, then four holes proven by probe
+
+User Prompt (verbatim, secrets redacted):
+"I will be sending the responses of Multiple AIs. Be ready." then "Boot up multiple agent teams, and orchestrator... ask me before running the delegated agents." then "Go"
+
+Agent Response Summary:
+Ran three read-only subagents on separate axes (security, resumption, evidence) over five advisory memos.
+They converged on append-only declassification and a step-based workflow, and flagged four real gaps that
+were then confirmed with executable probes against our own code: hidden source recovery did not exist,
+identity was request-supplied, document labels could drift via reload, and the report title was a free-text
+channel. Implemented the first hardening pass with 22 passing tests.
+
+Actions:
+* Launched three general-purpose subagents and merged their findings
+* Ran probes proving each gap, then implemented identity binding, read-taint, tamper freezing, derived titles
+* Committed and pushed 4be34c4
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=main
+repo_root=C:\Users\Tanush Garg\Documents\Qoder\2026-10-29\376c904f\team-9-11
+worktree=main
+parent_agent=none
+
+## [2026-10-30T14:10:00+05:30] Work order triaged by running its own eight checks; twelve fixes implemented
+
+User Prompt (verbatim, secrets redacted):
+"Make sure these are the best fixes you can give. Or you could make a prompt which I can give other AI agents... DO not fabricate anything, do not assume anything. write output from different Tree of Thoughts..." then "Go"
+
+Agent Response Summary:
+Ran the pasted work order's own Tier 0 verification checks rather than accepting them: V2, V3, V4, V5 were
+already solved, V7 only widens when actor clearance exceeds the tighter rule, and V8 proved the release
+justification was never stored. Rejected three of its recommendations (declassify-as-a-tool, upward
+reclassification, audit hash chains) and replaced its "human writes expectations" premise, which is
+impossible for a solo non-technical builder. Implemented twelve fixes: session registry so read history
+survives clicks, taint keyed by actor, reasons carry ids only, digest covers title and owner, outbox records
+classification, justification persisted, officer clearance enforced, provenance tamper blocks delivery,
+unknown classifications fail closed, a gateway capability token on every tool, duplicate role/tool rules
+rejected at load, and an honest note that release is a store action rather than a tool. 32 tests pass.
+
+Actions:
+* Wrote agentgate/sessions.py; updated store, policy, gateway, tools, app, docs/RUN.md
+* Added tests/test_hardening.py and updated the existing suites
+* Ran pytest (32 passed), restarted the dashboard on port 8560, committed and pushed
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=main
+repo_root=C:\Users\Tanush Garg\Documents\Qoder\2026-10-29\376c904f\team-9-11
+worktree=main
+parent_agent=none

@@ -1,7 +1,8 @@
 """AGENTGATE demo dashboard.
 
-Every action goes through a Session. The page never calls a tool directly, and the
-policy files are re-read on every run so a rule change on disk is honoured.
+Every tool call goes through a Session held in a registry, so read history survives
+clicks. Policy files are re-read on every run. Declassification is a separate store
+action, not a tool, and the page says so.
 """
 
 from __future__ import annotations
@@ -12,13 +13,14 @@ import pandas as pd
 import streamlit as st
 
 from agentgate import tools
-from agentgate.gateway import Session, declassify
+from agentgate.gateway import declassify
 from agentgate.models import ActionRequest
 from agentgate.policy import load_policy_set
+from agentgate.sessions import SessionRegistry
 from agentgate.store import Store
 
 ROOT = Path(__file__).resolve().parent
-DB = ROOT / "data" / "agentgate-v2.sqlite"
+DB = ROOT / "data" / "agentgate-v3.sqlite"
 
 
 def world():
@@ -30,6 +32,11 @@ def world():
 
 
 state, policies = world()
+
+if "registry" not in st.session_state:
+    st.session_state["registry"] = SessionRegistry(state, policies)
+registry: SessionRegistry = st.session_state["registry"]
+registry.refresh(policies)
 
 st.set_page_config(page_title="AGENTGATE", layout="wide")
 st.title("AGENTGATE — permissions enforced before an AI acts")
@@ -65,7 +72,7 @@ with left:
             "Source documents", [d.id for d in docs],
             format_func=lambda i: f"{i} — {next(d.title for d in docs if d.id == i)} "
                                  f"[{next(d.classification for d in docs if d.id == i)}]")
-        st.caption("The title is derived from the sources. Free text cannot enter a report.")
+        st.caption("Titles are derived. Anything this actor has read is added automatically.")
     else:
         artifacts = state.list_artifacts()
         resource_id = st.selectbox(
@@ -81,14 +88,14 @@ with left:
                  disabled=(tool == "deliver_inbox" and not resource_id)):
         request = ActionRequest(tool=tool, resource_id=resource_id, source_ids=source_ids,
                                 recipient=recipient)
-        decision, result = Session(state, policies, actor, origin).submit(request)
-        st.session_state["last"] = (decision.model_dump(), result)
+        decision, result = registry.get(actor, origin).submit(request)
+        st.session_state["last"] = (decision.model_dump(), result, request.model_dump())
         st.rerun()
 
 with middle:
     st.subheader("2. Gateway decision")
     if "last" in st.session_state:
-        decision, result = st.session_state["last"]
+        decision, result, sent = st.session_state["last"]
         if decision["allowed"]:
             st.success(f"ALLOWED — rule {decision['rule_id']}")
         else:
@@ -102,25 +109,26 @@ with middle:
         else:
             st.caption("No tool was invoked. Nothing reached the document store, the report store, "
                        "or the inbox.")
+        if sent.get("source_ids"):
+            st.caption(f"Effective sources after read history: {', '.join(sent['source_ids'])}")
     else:
         st.info("Submit an action to see the decision.")
 
     st.divider()
-    st.subheader("Declassification")
-    st.caption("Only a human security officer may lower a label. A new linked copy is created; "
-               "the original is never edited.")
+    st.subheader("Release a label")
+    st.caption("Declassification is a store action, not a tool. Only a human security officer may "
+               "use it; a new linked copy is created and the original is never edited.")
     artifacts = state.list_artifacts()
     if artifacts:
-        target_id = st.selectbox("Report to declassify", [a.id for a in artifacts],
+        target_id = st.selectbox("Report to release", [a.id for a in artifacts],
                                  format_func=lambda i: f"{i} — "
                                  f"{next(a.label.classification for a in artifacts if a.id == i)}")
         target_level = st.selectbox("New classification", ["PUBLIC", "INTERNAL", "CONFIDENTIAL"])
         justification = st.text_area("Written justification", height=70)
-        if st.button("Declassify"):
+        if st.button("Release"):
             try:
                 child = declassify(state, policies, actor, target_id, target_level, justification)
-                st.success(f"Created {child.id} at {child.label.classification}. "
-                           f"Original untouched.")
+                st.success(f"Created {child.id} at {child.label.classification}. Original untouched.")
             except (PermissionError, ValueError) as error:
                 st.error(f"Refused: {error}. The attempt is in the audit trail.")
 
@@ -131,11 +139,12 @@ with right:
         table = pd.DataFrame(audit)[["ts", "actor", "origin", "tool", "resource", "recipient",
                                      "allowed", "rule_id", "reason", "policy_hash"]]
         table["allowed"] = table["allowed"].map({1: "ALLOWED", 0: "BLOCKED"})
-        st.dataframe(table, hide_index=True, height=460)
+        st.dataframe(table, hide_index=True, height=420)
     outbox = state.list_outbox()
     st.write(f"**Messages actually delivered:** {len(outbox)}")
     for message in outbox:
-        st.caption(f"{message['ts']} — {message['artifact_id']} → {message['recipient']}")
+        st.caption(f"{message['ts']} — {message['artifact_id']} "
+                   f"[{message.get('classification', '')}] → {message['recipient']}")
     if st.button("Reset demo data"):
         DB.unlink(missing_ok=True)
         st.session_state.clear()
