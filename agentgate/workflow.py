@@ -26,6 +26,7 @@ from typing import Any
 from .gateway import Session
 from .models import ActionRequest
 from .policy import load_policy_set
+from .policy_guard import PolicyDrift
 
 
 def create(state, steps: list[ActionRequest], title: str = "workflow") -> str:
@@ -64,17 +65,22 @@ def resume(state, workflow_id: str, principals_path: str | Path,
 
     If a policy guard is supplied, a rulebook that moved since the pin refuses the run
     unless the operator's reload token is presented. Resume is a decision point like any
-    other; it must not be a way to adopt a rulebook nobody approved.
+    other; it must not be a way to adopt a rulebook nobody approved. Drift is refused as a
+    denied decision — audited, every open step halted, nothing executed — not as an
+    exception out of the runner.
     """
+    steps = state.steps_for(workflow_id)
     if guard is not None:
         if token is not None:
             policies = guard.reload(token)
         else:
-            guard.check()
+            try:
+                guard.check()
+            except PolicyDrift as drift:
+                return _refuse_drift(state, workflow_id, steps, drift)
             policies = load_policy_set(principals_path, policies_path)
     else:
         policies = load_policy_set(principals_path, policies_path)
-    steps = state.steps_for(workflow_id)
     payload = state.get_workflow(workflow_id)["payload"]
     outputs = {step["idx"]: step["output"] for step in steps}
     report: dict[str, Any] = {"workflow_id": workflow_id,
@@ -86,7 +92,7 @@ def resume(state, workflow_id: str, principals_path: str | Path,
             continue
 
         request = _chain(ActionRequest(**step["request"]), outputs)
-        session = Session(state, policies, request.actor_id, request.origin)
+        session = Session(state, policies, request.actor_id, request.origin, guard)
         decision, result = session.submit(request, workflow_id=workflow_id,
                                           step_index=step["idx"])
 
@@ -115,6 +121,41 @@ def resume(state, workflow_id: str, principals_path: str | Path,
 
     report["status"] = "completed"
     state.save_workflow(workflow_id, "completed", payload)
+    return report
+
+
+def _refuse_drift(state, workflow_id: str, steps: list[dict], drift: PolicyDrift) \
+        -> dict[str, Any]:
+    """Refuse a run whose rulebook moved since the pin: denied, audited, nothing executed.
+
+    Each open step gets the same denial the gateway would give it mid-session — its own tool
+    and index in the trail — and the run is summarised as one `resume` row. No step is
+    evaluated and no tool runs.
+    """
+    reason = (f"Refused: the rulebook on disk no longer matches the one this workflow was "
+              f"pinned to (pinned {drift.expected}, found {drift.found}). No step was evaluated "
+              "and no tool ran. A reload with the operator token is required to accept the "
+              "new rules.")
+    open_steps = [step for step in steps if step["status"] != "done"]
+    report: dict[str, Any] = {"workflow_id": workflow_id,
+                              "policy_fingerprint": drift.expected,
+                              "status": "refused", "steps": []}
+    for step in open_steps:
+        request = ActionRequest(**step["request"])
+        state.record_audit(
+            actor=request.actor_id, origin=request.origin, tool=request.tool,
+            resource=request.resource_id or ",".join(request.source_ids) or None,
+            recipient=request.recipient, allowed=False, rule_id="RULE-POLICY-DRIFT",
+            reason=reason, label=None, policy_hash=drift.expected,
+            workflow_id=workflow_id, step_index=step["idx"])
+        state.set_step(workflow_id, step["idx"], "halted", reason)
+        report["steps"].append(_row(step["idx"], describe(step), request.tool, "halted",
+                                    "RULE-POLICY-DRIFT", reason, allowed=False))
+    actor = ActionRequest(**open_steps[0]["request"]).actor_id if open_steps else "workflow"
+    state.record_audit(actor=actor, origin="human", tool="resume", resource=workflow_id,
+                       recipient=None, allowed=False, rule_id="RULE-POLICY-DRIFT",
+                       reason=reason, label=None, policy_hash=drift.expected,
+                       workflow_id=workflow_id)
     return report
 
 

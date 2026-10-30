@@ -101,8 +101,21 @@ def _dispatch(request: ActionRequest, state, effect_key: str = ""):
 
 
 def declassify(state, policies: PolicySet, officer_id: str, artifact_id: str,
-               target: str, justification: str) -> Artifact:
+               target: str, justification: str, guard: Guard | None = None) -> Artifact:
     """Human officer only. Creates a new linked artifact; never edits the original."""
+    if guard is not None:
+        try:
+            guard.check()
+        except PolicyDrift as drift:
+            state.record_audit(actor=officer_id, origin="human", tool="declassify",
+                               resource=artifact_id, recipient=None, allowed=False,
+                               rule_id="RULE-POLICY-DRIFT",
+                               reason=(f"Blocked: the rulebook on disk no longer matches the pin "
+                                       f"(pinned {drift.expected}, found {drift.found}). No label "
+                                       "was released."),
+                               label=None, policy_hash=policies.fingerprint,
+                               justification=justification)
+            raise PermissionError("the rulebook has drifted; release is refused until it is adopted")
     officer = policies.principal(officer_id)
     if officer is None or officer.role != "security-officer":
         state.record_audit(actor=officer_id, origin="human", tool="declassify",

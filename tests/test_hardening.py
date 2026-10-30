@@ -178,7 +178,7 @@ def test_tools_refuse_direct_calls(state):
 def test_resume_refuses_a_rulebook_swapped_since_the_pin(tmp_path, state):
     """Live finding from the red team: resume must not adopt a rulebook nobody approved."""
     from agentgate import workflow
-    from agentgate.policy_guard import Guard, PolicyDrift
+    from agentgate.policy_guard import Guard
 
     principals = tmp_path / "principals.json"
     principals.write_text((ROOT / "data" / "principals.json").read_text(), encoding="utf-8")
@@ -194,9 +194,12 @@ def test_resume_refuses_a_rulebook_swapped_since_the_pin(tmp_path, state):
             rule["max_classification"] = "PUBLIC"
     rules.write_text(json.dumps(swapped), encoding="utf-8")
 
-    with pytest.raises(PolicyDrift):
-        workflow.resume(state, wf, principals, rules, guard=guard)
+    report = workflow.resume(state, wf, principals, rules, guard=guard)
+    assert report["status"] == "refused"
     assert tools.EXECUTIONS == []
+    refused = state.list_audit()[0]
+    assert refused["rule_id"] == "RULE-POLICY-DRIFT" and refused["allowed"] == 0
+    assert refused["workflow_id"] == wf
 
     report = workflow.resume(state, wf, principals, rules, guard=guard, token="operator-token")
     assert report["status"] == "completed"

@@ -2,25 +2,28 @@
 
 ## Live findings
 
-Two attacks are kept failing rather than softened. Both run under `xfail(strict=True)` in
-`tests/test_redteam.py`, so the suite is honest today and fails loudly the day either is fixed.
-
-**LF-1 — `workflow.resume` honours a rulebook nobody adopted.** `agentgate/workflow.py:77`
-builds `Session(state, policies, ...)` with no guard, and `resume` re-reads both JSON files from
-disk at line 64. Reproduced by `redteam.attacks.resume_ignores_the_policy_pin`: an `intern` step to
-read `doc-001` is blocked on the first resume, then `principals.json` and `policies.json` are edited
-(intern granted RESTRICTED, `READ-INTERN` raised to RESTRICTED) with **no** operator reload, and the
-next resume **allows the read and audits it as authorised**. That is precisely the abuse the guard is
-meant to refuse. Mitigation that did land: `app.py` disables the Resume button while disk and pin
-differ, so the demo path is closed — direct `resume()` calls are not.
-
 **LF-2 — a document minted after the pin is trusted on sight.** The guard pins two files. Drop
 `doc-999-forged.md` with `classification: PUBLIC`, `owner: attacker` into the documents folder after
 the pin, call `load_documents_from_dir`, and the intern reads it with `integrity=ok` and rule
-`READ-INTERN` (`redteam.attacks.mint_a_forged_document`). This is a proposal, not a shipped
-guarantee: the guard as specified covers the rulebook, and pinning the document set would collide
-with the demo, which edits `data/documents/` on purpose. It is listed because it is the same class
-of trust as LF-1, not because it is out of scope.
+`READ-INTERN` (`redteam.attacks.mint_a_forged_document`, kept `xfail(strict)`). This is a proposal,
+not a shipped guarantee: the guard as specified covers the rulebook, and pinning the document set
+would collide with the tamper demo, which edits `data/documents/` on purpose. Fixing it means a
+second pin over the folder listing plus each document's fingerprint, adopted through the same token
+door — the work I would do first with more time.
+
+**LF-1 — closed, and the finding is now an attack that must keep passing.** `workflow.resume` built a
+guardless session and re-read disk, so an unadopted edit to both JSON files let an intern read a
+CONFIDENTIAL document and audit it as authorised. `resume` now takes an optional `guard` and passes it
+to every step's session, and the dashboard hands it the registry's guard; the same edit produces
+`RULE-POLICY-DRIFT` and a halted run. `redteam.attacks.resume_checks_the_policy_pin` holds that door.
+Two things came with the fix:
+
+- `declassify` also refuses on drift (`RULE-POLICY-DRIFT`, audited), so no decision path is left
+  unguarded.
+- `policy_guard.unadopted_rows(state, guard)` finds audit rows stamped with a rulebook hash the
+  guard never adopted. Anything that forgets the guard in future is *findable* rather than invisible,
+  and `decisions_under_an_unadopted_rulebook_are_findable` runs the guardless path on purpose to
+  prove the detector sees it. The dashboard shows the count in the Guard panel.
 
 ## What I built
 
@@ -44,10 +47,22 @@ match the current pin; the only way in is `reload_rulebook(token)`, which audits
 drift turns into a red banner plus a token field, and Resume is disabled while drifted. The reload
 token comes from `AGENTGATE_RELOAD_TOKEN`; unset means reload is impossible.
 
-**`redteam/` + tests** — 21 named attacks, each its own function, in an `Arena` that copies the
+**`redteam/` + tests** — 22 named attacks, each its own function, in an `Arena` that copies the
 documents, the rulebook and its own SQLite file into a tmp directory, so tampering never touches
 `data/`. Two meta tests assert the harness is at least twelve attacks deep and that the repository's
-own rulebook hash is unchanged after the whole run. Plus nine direct unit tests of the guard API.
+own rulebook hash is unchanged after the whole run. Plus thirteen direct unit tests of the guard API.
+
+Beyond the brief, three things the task did not ask for and an MVP needs:
+
+- **`python -m redteam`** prints the attack board and `--json` writes `redteam/results.json`, the same
+  one-command evidence shape as `python -m benchmark.runner`. Arenas close their SQLite handle
+  explicitly because Windows holds an open file and `TemporaryDirectory` cleanup then fails.
+- **The dashboard has a Guard panel** — mode, pin, disk hash, enforced hash, adoption history, the
+  count of decisions made off the pin, and the attack board with whatever is still open. An audience
+  can see the security state without reading code.
+- **The guard fails closed, not open.** An unreadable or deleted rulebook is a `RULE-POLICY-DRIFT`
+  denial with an audit row, not a traceback inside the decision path; adoption of a rulebook that does
+  not parse is refused; the token is compared with `hmac.compare_digest`.
 
 ## What I tried, and what stopped it
 
@@ -72,15 +87,18 @@ own rulebook hash is unchanged after the whole run. Plus nine direct unit tests 
 | 15 | act as a recipient mailbox | `RULE-RECIPIENT-NOT-ACTOR` |
 | 16 | act as an unknown actor | `RULE-UNKNOWN-ACTOR` |
 | 17 | forge a `$9` step reference | blocked as a missing artifact, nothing sent |
-| 18 | resume against a drifted rulebook | **LF-1 — succeeds today** |
-| 19 | mint a forged document after the pin | **LF-2 — succeeds today** |
+| 18 | resume against an unadopted rulebook edit | **`RULE-POLICY-DRIFT`, run halted — LF-1 closed** |
+| 19 | decide off-pin anyway, through a guardless resume | `unadopted_rows` names the row by hash |
+| 20 | mint a forged document after the pin | **LF-2 — succeeds today, kept failing** |
 
 ## Evidence
 
-- `pytest` — **123 passed, 2 xfailed** against merged `main` (`4d34945`, which added the demo
+- `pytest` — **128 passed, 1 xfailed** against merged `main` (`4d34945`, which added the demo
   seeder, swap tool and 499 lines of `tests/test_demo_beats.py`). Every pre-existing test is green
-  and none of their expectations were edited. My lane adds 9 guard unit tests, 23 red-team tests and
+  and none of their expectations were edited. My lane adds 13 guard unit tests, 24 red-team tests and
   the 33 task-1 injection tests.
+- `python -m redteam` — **22 attacks, 21 held, 1 documented open finding**, artifact committed at
+  `redteam/results.json` so the board is evidence and not a live opinion.
 - Attack 12 fails closed with `RULE-POLICY-DRIFT` and leaves an audit row — the task's explicit
   done-means, asserted in `redteam.attacks.swap_the_rulebook_mid_session`.
 - The dashboard path is tested, not assumed: `test_the_dashboard_refuses_a_rulebook_swapped_between_clicks`
@@ -115,31 +133,29 @@ so nobody presents one believing it is the other.
 
 ## Still open
 
-- LF-1 needs one parameter on `workflow.resume` (`guard=None`) and `app.py` passing the registry
-  guard. Requested, not done.
-- LF-2 needs a product decision: pinning the document set would break the tamper demo, which edits
-  documents deliberately.
-- The guard is opt-in per `Session`. The existing suite and the benchmark construct guardless
-  sessions, so wiring it by default would have rewritten expectations I was told not to touch.
-  Anything that runs through the registry or a guarded session is covered; anything else is not.
-- The reload token is an env var with no rotation or expiry, and `guard.reloads` is in-memory only —
-  the audit row is the durable record, the list is not.
+- LF-2 (a document minted after the pin) is the one finding still succeeding.
+- The pin defaults to off in the dashboard. That is a deliberate product call to avoid breaking the
+  scripted swap beat, not an accident — but it does mean the cross-click story is opt-in until a
+  presenter sets `AGENTGATE_PIN_RULEBOOK=1`, and the flag is documented nowhere but this report and
+  the on-screen panel.
+- `docs/DEMO_SCRIPT.md` and `docs/DEMO_RUNSHEET.md` still tell the presenter a bare
+  `swap_policy.py tighten` lands on the next click. True in the default mode, false pinned — where
+  the extra line is "then type the reload token". Those files are Tanush's.
+- The guard is opt-in per `Session`: a caller can still build one without a guard. The audit hash
+  makes that visible (`unadopted_rows`), which is the honest position — enforcement where the product
+  runs, detection everywhere.
+- The reload token is an env var with no rotation or expiry, and `guard.reloads` is in-memory only;
+  the audit rows are the durable record.
 - The trust boundary is unchanged and still worth saying out loud: whoever can write
   `data/policies.json` can also write `agentgate/policy_guard.py`.
-- `docs/DEMO_SCRIPT.md` and `docs/DEMO_RUNSHEET.md` still tell the presenter that a bare
-  `swap_policy.py tighten` lands on the next click. True in the default mode, false under
-  `AGENTGATE_PIN_RULEBOOK=1` — where the extra line is "then type the reload token". If the pinned
-  mode is what you want to show a judge, those two files need that one sentence, and they are his.
-- The pin defaults to off in the dashboard. That is a deliberate product call to avoid breaking the
-  scripted beat, not an accident, but it does mean the security story is opt-in until someone sets
-  the flag.
 
 ## With four more hours
 
-1. **Close LF-1.** Add `guard` to `workflow.resume` and have `app.py` hand it the registry's guard,
-   so a resumed step checks the pin like every live click. Then delete LF-1's xfail marker — the
-   strict marker means the suite fails the moment it passes without the report being updated.
-2. **Pin the document set the way the rulebook is pinned.** A second pin over the folder listing and
-   each document's fingerprint, `load_documents_from_dir` refusing a new or changed id without an
-   explicit adopt, and LF-2's marker deleted. If the demo needs new documents mid-run, the adopt is
-   the same token door the rulebook already uses — one mechanism, two trusted inputs.
+1. **Close LF-2 the way LF-1 was closed.** A second pin over the document set — the folder listing
+   plus each document's fingerprint — `load_documents_from_dir` refusing a new or changed id without
+   an adopt, and the same token door the rulebook already uses. Then delete LF-2's xfail marker and
+   the board reads 22/22. One mechanism, two trusted inputs.
+2. **Put drift in the evidence table.** A 33rd scenario that swaps the rulebook mid-run and expects
+   `RULE-POLICY-DRIFT`, plus the mutation suite breaking the pin check so the number has teeth the
+   same way the other six do. `benchmark/` is Tanush's lane, so this is a request I would bring with
+   the scenario JSON written and tested in my own lane first.
