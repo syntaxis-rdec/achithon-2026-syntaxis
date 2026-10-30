@@ -269,3 +269,43 @@ history on his branch.
 - `python -m agentgate.export` on a seeded database — one line, four files, exit 0.
 - `python demo/rehearse.py` — 12/12 beats, 6.2 s, exit 0, beat 0 now `yes`.
 - `python -m benchmark.runner` 32/32, `benchmark.mutations` 6/6, `python -m redteam` 21/22 held.
+
+---
+
+# Task 5 — remaining gaps closed, both findings now shut
+
+Merged main twice (the dark frontend + Flask embed, then the audit chain/canary/packager wave). Where
+main and this lane both produced the same thing, main won: its export, its `docs/SUBMISSION.md` and its
+template are canonical; only the bare-`eyJ` JWT redaction rule was ported from my duplicate.
+
+**Closed since the last report:**
+
+- **LF-1** — `workflow.resume` and `declassify` take the guard; a rulebook edit nobody adopted now halts
+  a resumed run with `RULE-POLICY-DRIFT`, and `policy_guard.unadopted_rows()` makes any guardless path
+  visible in the audit trail.
+- **LF-2** — the guard pins the document set (`documents_path`): a file minted after the pin is refused
+  with `RULE-DOCUMENT-DRIFT`, and `reload(token)` re-pins both together. The board is **22/22, 0 open**.
+- **No browser-blind spot** — `tests/test_server_smoke.py` starts Streamlit and the Flask evidence server
+  as subprocesses and speaks HTTP to them; the evidence server port is configurable and no longer runs the
+  reloader, which held SQLite open on Windows.
+- **The archive is tested** — `tests/test_packaging.py` builds a real zip, asserts the source is in it,
+  asserts no `.sqlite`/`.pyc`/`.venv`/`.env` rides along, and that a planted token fails the build. The
+  built archive is now git-ignored.
+- **The frozen table is guarded** — `tests/test_guarded_benchmark.py` replays all 32 scenarios through a
+  pinned registry and requires the committed verdicts, then breaks the pin on purpose and requires
+  `RULE-POLICY-DRIFT`. `benchmark/` itself is untouched.
+- **The text-blindness claim is structural** — AST checks with a positive control that reads `tools.py`.
+
+**Still true, said plainly:** both pins are opt-in in the dashboard (`AGENTGATE_PIN_RULEBOOK`,
+`AGENTGATE_PIN_DOCUMENTS`) because the stage demo swaps the rulebook and tampers with a document on
+purpose. `AGENTGATE_*` switches, the rehearsal and the export are documented in `docs/RUN.md`.
+
+## Ready to merge (task 5)
+
+- `agentgate/policy_guard.py`, `agentgate/gateway.py`, `app.py`, `redteam/*`, 4 new test files,
+  `web/app.py`, `.gitignore`, plus the aligned numbers in README/PITCH_DECK/RUN/SUBMISSION/CI.
+- `pytest` — **342 passed, 1 skipped, 0 failed** (343 collected; the skip is the live-findings
+  parametrization with an empty list, kept so the mechanism is still exercised).
+- `python -m redteam` — **22/22 held, 0 open findings**; `redteam/results.json` regenerated.
+- `python demo/rehearse.py` — **12/12 beats**, exit 0, under 90 s.
+- `python -m benchmark.runner` 32/32 · `benchmark.mutations` 6/6 · `package_submission.py` builds.

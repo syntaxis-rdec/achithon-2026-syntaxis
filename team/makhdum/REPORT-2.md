@@ -2,6 +2,11 @@
 
 ## Live findings
 
+**Status, later the same day: both findings below are closed.** LF-1 by `workflow.resume` taking a
+guard, LF-2 by the guard pinning the document set as well as the rulebook. The text is left as it was
+written, because a finding that was true at the time is part of the record. What closes them, and what
+is still opt-in, is at the end under *Addendum*.
+
 **LF-2 — a document minted after the pin is trusted on sight.** The guard pins two files. Drop
 `doc-999-forged.md` with `classification: PUBLIC`, `owner: attacker` into the documents folder after
 the pin, call `load_documents_from_dir`, and the intern reads it with `integrity=ok` and rule
@@ -159,3 +164,19 @@ so nobody presents one believing it is the other.
    `RULE-POLICY-DRIFT`, plus the mutation suite breaking the pin check so the number has teeth the
    same way the other six do. `benchmark/` is Tanush's lane, so this is a request I would bring with
    the scenario JSON written and tested in my own lane first.
+
+## Addendum — both findings closed
+
+- **LF-1** closed by `guard` parameters on `workflow.resume` and `declassify`, plus
+  `policy_guard.unadopted_rows()` so a guardless path is findable in the audit trail even when nothing
+  refused it. Attacks 18 and 19 hold the door and the alarm.
+- **LF-2** closed by a second pin over the whole document set: `documents_fingerprint(directory)` hashes
+  every file name and body in sorted, length-prefixed order, and `Guard(..., documents_path=...)` refuses
+  a minted or edited document with `RULE-DOCUMENT-DRIFT`. `Guard.reload(token)` re-pins both, so one
+  operator action adopts one state of the world.
+- **What is still a limitation, said plainly:** both pins are opt-in in the dashboard
+  (`AGENTGATE_PIN_RULEBOOK=1`, `AGENTGATE_PIN_DOCUMENTS=1`) because the stage demo swaps the rulebook and
+  tampers with a document deliberately. Without a pin, a minted document is still trusted on sight — that
+  is the default posture, not a hidden one. The board now reads 22/22 because the harness enables the pin
+  the attack tests, and `tests/test_policy_guard.py::test_without_a_document_pin_a_minted_document_is_still_trusted`
+  asserts the opposite case stays true.

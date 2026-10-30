@@ -141,12 +141,12 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
 
 | Suite | Command | Coverage | Result |
 |---|---|---|---|
-| **Unit & Integration** | `pytest` | 262 tests across gateway, policy, labels, resumption, injection, audit chain, canary, web, text-blindness | **262 passed, 1 xfailed (LF-2)** |
+| **Unit & Integration** | `pytest` | 343 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web, packaging, text-blindness | **342 passed, 1 skipped, 0 failed** |
 | **Stage Rehearsal** | `python demo/rehearse.py` | 12 live demo beats headlessly driven via `AppTest` | **12/12 beats green in 5.0s** |
 >>>>>>> origin/main
 | **Scenario Benchmark** | `python -m benchmark.runner` | 32 frozen specification scenarios | **32/32 matched, 0 unauthorized** |
 | **Mutation Testing** | `python -m benchmark.mutations` | 6 deliberate gateway corruptions (clearance, inheritance, allowlist, tamper, read history, audit) | **6/6 detected (100% sensitivity)** |
-| **Red Team Board** | `python -m redteam` | 22 real-world attack vectors (injections, role forgery, TOCTOU, drift) | **21/22 held, 1 open finding** |
+| **Red Team Board** | `python -m redteam` | 22 real-world attack vectors (injections, role forgery, TOCTOU, drift, minted documents) | **22/22 held, 0 open findings** |
 | **Audit Packager** | `python -m agentgate.export` | SQLite audit trail export to CSV/JSON with automated secret scrubbing | **Clean export, 0 leaked tokens** |
 | **Submission Validator** | `python package_submission.py` | Full repo hygiene check and zip creation | **Validated (100 files, 0.29MB)** |
 
@@ -253,7 +253,7 @@ Everything you need to deliver the 3-minute stage pitch or evaluate the system i
 2. **Process Boundary**: The trust boundary is this Python process and SQLite storage. Anyone with direct write access to disk can alter files; AGENTGATE detects file tampering, not kernel compromises.
 3. **Mock Sinks**: The inbox is an internal SQLite table, not live SMTP email.
 4. **Resumption Edge Case**: A delivery step is idempotent via `workflow:step` keys. Report saving has no natural key; a crash exactly between `save_report` and status recording may leave an orphaned report if retried.
-5. **Open Finding (LF-2)**: Document inventory pinning is documented as an open proposal in `team/makhdum/REPORT-2.md`. In this release, documents dropped into the folder after initial boot are fingerprinted on sight; only the policy rulebook is cryptographically pinned.
+5. **Pins Are Opt-In**: The rulebook pin (`AGENTGATE_PIN_RULEBOOK=1`) and the document-set pin (`AGENTGATE_PIN_DOCUMENTS=1`) are off by default in the dashboard, because the stage demo swaps the rulebook and tampers with a document deliberately. Both are enforced wherever they are enabled, the red team attacks them directly, and `policy_guard.unadopted_rows()` names any decision taken outside a pin — the earlier open finding (LF-2) is closed by the document pin rather than by lowering the claim.
 
 ---
 

@@ -136,8 +136,9 @@ default one that later allowed it. Alongside it, the run asserts:
 (Superseded later the same day: with the export tests and the structural text-blindness tests added,
 the same command reports `222 passed, 1 xfailed`. The figure above is the Task-3 run.)
 
-The single xfail is the pre-existing LF-2 red-team finding from Task 2 (a document minted after the
-policy pin is trusted on sight), kept `strict`. No existing test was edited, skipped or weakened;
+The single xfail was the pre-existing LF-2 red-team finding from Task 2 (a document minted after the
+policy pin). It is closed: the guard now pins the document set too, so the board is 22/22 and that
+row became a skipped test rather than a documented failure. No existing test was edited, skipped or weakened;
 `tests/test_demo_beats.py`, `agentgate/`, `app.py`, `benchmark/` and `docs/DEMO_SCRIPT.md` are untouched.
 
 Focused run:

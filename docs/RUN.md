@@ -76,6 +76,16 @@ Dashboard section 4 shows the benchmark and red team attack board live.
 - `AGENTGATE_DATA_DIR`: override the data directory (used by the test suite and rehearsal to run in a
   clean scratch environment without touching live state).
 
+## Environment switches (all optional, all off by default)
+
+| Variable | Effect |
+|---|---|
+| `AGENTGATE_DATA_DIR` | Point the dashboard, the demos, the rehearsal and the web viewer at a scratch copy of `data/` instead of the live folder. |
+| `AGENTGATE_RELOAD_TOKEN` | The token an operator types to adopt a rulebook that changed on disk. Unset means the pin can never be moved. |
+| `AGENTGATE_PIN_RULEBOOK=1` | Keep the rulebook pin across dashboard reruns, so a policy file swapped between clicks is refused under `RULE-POLICY-DRIFT` until adopted. |
+| `AGENTGATE_PIN_DOCUMENTS=1` | Also pin the document set, so a document minted or edited after the pin is refused under `RULE-DOCUMENT-DRIFT`. Off by default because the tamper demo edits a document on purpose. |
+| `AGENTGATE_WEB_PORT` / `AGENTGATE_WEB_HOST` | Where the read-only evidence server listens; the dashboard iframe assumes 5000. |
+
 ## One command per claim
 
 | Claim | Command |
@@ -83,7 +93,7 @@ Dashboard section 4 shows the benchmark and red team attack board live.
 | the suite is green | `pytest` — 264 tests, 263 pass, 1 documented xfail |
 | the frozen table is matched | `python -m benchmark.runner` — 32/32 |
 | the table would notice a break | `python -m benchmark.mutations` — 6/6 detected |
-| the attacks are refused | `python -m redteam` — 21 of 22 held, one documented |
+| the attacks are refused | `python -m redteam` — 22 of 22 held, none open |
 | the demo script actually runs | `python demo/rehearse.py` — 12 beats, exit 0, under 90 s |
 | the trail can leave the app | `python -m agentgate.export <db> exports/` |
 | the trail can be read in a browser | `python web/app.py` — read-only, every number from SQLite |

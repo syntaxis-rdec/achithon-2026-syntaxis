@@ -62,7 +62,7 @@ Run all four verification commands before archiving:
    ```powershell
    .venv\Scripts\python.exe -m pytest
    ```
-   *Expected: 211+ passed, 1 strict xfailed (LF-2).*
+   *Expected: 342 passed, 1 skipped, 0 failed.*
 
 2. **Automated Stage Demo Rehearsal:**
    ```powershell
@@ -81,7 +81,7 @@ Run all four verification commands before archiving:
    ```powershell
    .venv\Scripts\python.exe -m redteam
    ```
-   *Expected: 22 attacks, 21 held, 1 documented open finding (LF-2).*
+   *Expected: 22 attacks, 22 held, 0 open findings.*
 
 5. **Evidence Pack Export:**
    ```powershell
