@@ -36,7 +36,7 @@ Then open the local URL Streamlit prints. Full walkthrough: [docs/RUN.md](docs/R
 ```bash
 python -m benchmark.runner      # 32 frozen scenarios → benchmark/results.json
 python -m benchmark.mutations   # breaks the gateway six ways; every break must be detected
-pytest                          # 37 tests
+pytest                          # 34 tests
 ```
 
 Current result: **32/32 scenarios matched, 0 unauthorized executions, 0 false allows, 0 false denies,
