@@ -96,6 +96,13 @@ def test_summarise_removes_a_trailing_report_phrase(session, state, policies):
     assert proposal.actions[0].source_ids == ["doc-002", "doc-004"]
 
 
+def test_alternate_report_phrasing_is_accepted(session, state, policies):
+    proposal = _propose("write a report from doc-002", session("analyst"), state, policies)
+
+    assert proposal.actions[0].tool == "save_report"
+    assert proposal.actions[0].source_ids == ["doc-002"]
+
+
 def test_send_the_report_resolves_to_the_saved_report(session, state, policies, report_id):
     proposal = _propose("send the report to manager@corp.example", session("analyst"),
                         state, policies)
@@ -105,6 +112,19 @@ def test_send_the_report_resolves_to_the_saved_report(session, state, policies, 
     assert action.tool == "deliver_inbox"
     assert action.resource_id == report_id
     assert action.recipient == "manager@corp.example"
+
+
+def test_the_report_means_the_latest_saved_report(session, state, policies):
+    _, _older = session("analyst").submit(
+        ActionRequest(tool="save_report", source_ids=["doc-004"]))
+    _, newer = session("analyst").submit(
+        ActionRequest(tool="save_report", source_ids=["doc-002"]))
+
+    proposal = _propose("send the report to manager@corp.example", session("analyst"),
+                        state, policies)
+
+    assert proposal.actions[0].resource_id == newer
+    assert newer != _older
 
 
 def test_send_accepts_an_explicit_report_id(session, state, policies, report_id):
@@ -229,6 +249,11 @@ def test_every_action_carries_the_session_actor(session, state, policies):
     assert proposal.actions
     assert {(action.actor_id, action.origin) for action in proposal.actions} == {
         ("agent-assistant", "agent")}
+
+
+def test_proposer_needs_a_bound_session_actor(state, policies):
+    with pytest.raises(ValueError):
+        proposer.propose("read doc-004", session=object(), state=state, policies=policies)
 
 
 # -- release is not expressible -------------------------------------------
@@ -455,6 +480,7 @@ def test_bad_envelope_falls_back_to_scripted(session, state, policies, model_con
 @pytest.mark.parametrize("content, expected", [
     ("not json at all", "not valid JSON"),
     ("[]", "not a JSON object"),
+    (json.dumps({}), "no list of actions"),
     (_reply([]), "no tool action"),
     (_reply([{"tool": "wire_transfer", "resource_id": "doc-004"}]), "unknown tool"),
     (_reply([{"tool": "read_document", "resource_id": "doc-004", "title": "x"}]),
@@ -468,6 +494,9 @@ def test_bad_envelope_falls_back_to_scripted(session, state, policies, model_con
               "recipient": "manager@corp.example"}]), "does not exist"),
     (_reply([{"tool": "read_document", "resource_id": "doc-004",
               "recipient": "manager@corp.example"}]), "mixed fields"),
+    (_reply([{"tool": "deliver_inbox", "resource_id": "report-nope",
+              "recipient": "manager@corp.example", "source_ids": ["doc-004"]}]),
+     "mixed fields"),
 ])
 def test_untrusted_model_replies_are_rejected(content, expected, session, state, policies,
                                               model_config):
@@ -480,6 +509,15 @@ def test_untrusted_model_replies_are_rejected(content, expected, session, state,
     assert proposal.actions == []
     assert proposal.refusal.startswith("Refused:")
     assert expected in proposal.refusal
+
+
+def test_model_action_flood_is_refused(session, state, policies, model_config):
+    flood = [{"tool": "read_document", "resource_id": "doc-004"} for _ in range(21)]
+
+    proposal, _ = _ask("read doc-004", flood, session("analyst"), state, policies, model_config)
+
+    assert proposal.actions == []
+    assert "limit is 20" in proposal.refusal
 
 
 def test_model_recipient_must_be_in_the_directory(session, state, policies, report_id,
@@ -604,6 +642,13 @@ def test_cli_never_prints_the_model_key(cli_db):
     assert "Backend: scripted" in result.stdout
     assert "ALLOWED READ-ANALYST" in result.stdout
     assert "sk-cli-secret" not in result.stdout + result.stderr
+
+
+def test_cli_reports_an_unopenable_state_file(tmp_path):
+    result = _run_cli(["read doc-004", "--actor", "analyst"], tmp_path)
+
+    assert result.returncode == 3
+    assert "Cannot open state file" in result.stderr
 
 
 def test_cli_rejects_an_actor_that_is_only_a_recipient(cli_db):
