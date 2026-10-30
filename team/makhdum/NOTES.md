@@ -59,23 +59,36 @@ both twins were blocked for unrelated reasons".
 
 ## Requests
 
-None blocking. Two optional notes for whoever owns `docs/`:
+None blocking. Three notes for the file owners:
 
-- `docs/RUN.md` does not mention `data/eval_documents/`; a line pointing at the pack would make it
-  findable from the demo path.
-- `README.md` still says 34 tests. It is 59 now.
+- `README.md:43` claims `pytest # 42 tests`. It is 67 on `main` now: 34 original + 25 from this pack
+  + 8 from the workflow-resumption work. The 25 from this lane were never counted.
+- `team/README.md:41` still states the baseline is **34 passing**, and the brief in
+  `team/makhdum/README.md` repeats it. Worth one line each so the next lane doesn't chase a stale
+  number.
+- `docs/RUN.md` does not mention `data/eval_documents/`. Demo step 3 (Injection) exercises `doc-003`
+  in `data/documents/`, so the pack is currently invisible in the walkthrough a judge follows.
+
+## Findings about my own assertions
+
+- `EXPECTED` in the test file pins rule ids straight out of `data/policies.json` and clearance levels
+  from `data/principals.json`. Both files are outside this lane. If either is retuned, three of these
+  tests fail loudly rather than silently adapting. That is intentional for a security suite, but it
+  makes this pack a tripwire for policy edits — whoever changes a rule should expect it.
+- Pairs 03 and 04 carry payloads that ask for actions the prescribed three-step flow never attempts
+  (a declassification, and a send to a non-approved recipient). Twin equality holds, but those two
+  attacks are not "live" in the flow. Closing it needs a fourth flow, which is outside the brief.
 
 ## Results
 
-- `pytest` — 59 passed (34 baseline + 25 new).
+- `pytest tests/test_injection.py` — 25 passed.
+- `pytest` — 59 passed on the lane before merge; **67 passed** after merging `origin/main`, which
+  added the workflow-resumption suite. The pack is unaffected by `agentgate/workflow.py`.
 - `python -m benchmark.runner` — 32/32 matched, 0 unauthorized executions, 0 false allows.
 - `python -m benchmark.mutations` — all six detected.
 
-## Ready to merge
+## Status
 
-- Lane tip `7b92fac`; work commits `b51625d` (corpus + 25 tests) and `7b92fac` (addressee and
-  canary hardening).
-- 25 new tests; full suite 59 passed against the 34-test baseline. Benchmark 32/32, all six
-  mutations detected, `benchmark/` and `data/documents/` untouched.
-- Scope claim: this proves invariance for six payload classes across three flows. It is a corpus,
-  not a proof about arbitrary text.
+Merged into `main` at `dbb97b6` by Tanush. All four lane commits are on `main`:
+`b51625d` (corpus + 25 tests), `e51900c` (notes), `7b92fac` (addressee and canary hardening),
+`7dc7555` (notes update). `lane/makhdum` was fast-forwarded to `dbb97b6` and re-verified green.
