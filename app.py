@@ -151,3 +151,45 @@ with right:
         st.rerun()
 
 st.caption(f"Tool executions recorded in this process: {len(tools.EXECUTIONS)}")
+
+st.divider()
+st.subheader("4. Evidence — 32 frozen scenarios")
+st.caption("Expectations were written from the specification by this team and frozen before the run. "
+           "They are not independently authored; the mutation check below is what makes the number "
+           "worth reading.")
+run_col, note_col = st.columns([1, 3])
+with run_col:
+    if st.button("Run the suite"):
+        from benchmark.runner import run_suite
+        report = run_suite()
+        st.session_state["evidence"] = report
+with note_col:
+    st.caption("A suite that cannot fail is not evidence. Six deliberate breakages are run against "
+               "the same table; each one must degrade a metric.")
+
+report = st.session_state.get("evidence")
+if report is None:
+    results_file = ROOT / "benchmark" / "results.json"
+    if results_file.exists():
+        import json
+        report = json.loads(results_file.read_text(encoding="utf-8"))
+if report:
+    metrics = report["metrics"]
+    a, b, c, d = st.columns(4)
+    a.metric("Scenarios matched", f"{metrics['scenario_matches']}/{metrics['scenarios']}")
+    b.metric("Unauthorized executions", metrics["unauthorized_executions"])
+    c.metric("False allows / false denies",
+             f"{metrics['false_allows']} / {metrics['false_denies']}")
+    d.metric("Decisions with a complete audit row",
+             f"{metrics['audit_complete']}/{metrics['scenarios']}")
+    failures = [row for row in report["rows"] if not row["scenario_ok"]]
+    if failures:
+        st.error(f"{len(failures)} scenario(s) did not match the frozen expectation.")
+        for row in failures:
+            st.write(f"**{row['id']} {row['title']}** — expected "
+                     f"{row['expected']['allowed']}/{row['expected']['rule']}, got "
+                     f"{row['actual']['allowed']}/{row['actual']['rule']}")
+    else:
+        st.success("All 32 scenarios matched their frozen expectations.")
+    st.caption(f"scenario file `{report['scenario_file_sha256']}` · policy "
+               f"`{report['policy_fingerprint']}`")

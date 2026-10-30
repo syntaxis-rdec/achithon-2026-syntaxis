@@ -43,6 +43,17 @@ State lives in `data/agentgate-v3.sqlite`. **Reset demo data** in the dashboard 
 7. Policy change: edit `data/policies.json`, click any widget, do the action again → the new rule
    applies without a restart.
 
+## Evidence
+
+`python -m benchmark.runner` runs 32 frozen scenarios and writes `benchmark/results.json`.
+`python -m benchmark.mutations` breaks the gateway six ways and checks that the suite notices.
+
+Dashboard section 4 shows the same numbers. Current result: 32/32 matched, 0 unauthorized
+executions, 0 false allows, 0 false denies, 32/32 complete audit rows, all six mutations detected.
+
+Honest caveat: the expectations were written by this team from the specification and frozen before the
+run. They are not independently authored. The mutation check is what makes the number meaningful.
+
 ## Honesty notes
 
 - There is no login. Identities are bound by the session object, not authenticated.

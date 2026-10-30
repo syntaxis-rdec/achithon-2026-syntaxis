@@ -136,7 +136,7 @@ def _check_deliver(request, state, actor, rule, policies: PolicySet) -> Decision
                 artifact.label,
             )
     recipient_id = request.recipient or ""
-    if recipient_id not in actor.allowed_recipients:
+    if not _recipient_allowed(actor, recipient_id):
         return _deny(
             "RULE-RECIPIENT-NOT-PERMITTED",
             f"Blocked: rule {rule.id} does not permit {actor.id} to send to '{recipient_id}'. "
@@ -176,6 +176,11 @@ def _check_deliver(request, state, actor, rule, policies: PolicySet) -> Decision
 def _ceiling(actor_clearance: str, rule_max: str) -> str:
     """The stricter of personal clearance and the rule's cap."""
     return actor_clearance if labels.rank(actor_clearance) <= labels.rank(rule_max) else rule_max
+
+
+def _recipient_allowed(actor, recipient_id: str) -> bool:
+    """Single decision point, so the mutation suite can break exactly this rule."""
+    return recipient_id in actor.allowed_recipients
 
 
 def _allow(rule_id: str, reason: str, label: SecurityLabel | None = None) -> Decision:
