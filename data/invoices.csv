@@ -1,0 +1,4 @@
+invoice_id,customer_name,amount,invoice_date,reference
+INV001,ABC Traders,5000,2026-10-01,REF001
+INV002,XYZ Stores,8000,2026-10-03,REF002
+INV003,Green Mart,3500,2026-10-05,REF003
