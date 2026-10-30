@@ -55,14 +55,26 @@ State lives in `data/agentgate-v3.sqlite`. **Reset demo data** in the dashboard 
 
 ## Evidence
 
-`python -m benchmark.runner` runs 32 frozen scenarios and writes `benchmark/results.json`.
-`python -m benchmark.mutations` breaks the gateway six ways and checks that the suite notices.
+1. `python -m benchmark.runner` runs 32 frozen scenarios and writes `benchmark/results.json`.
+2. `python -m benchmark.mutations` breaks the gateway six ways and checks that the suite notices.
+3. `python -m redteam` runs 22 adversarial attack vectors (prompt injections, unauthorized roles,
+   data exfiltration, policy drift) and outputs `redteam/results.json`.
+4. `python demo/rehearse.py` headlessly rehearses all 12 beats in `docs/DEMO_SCRIPT.md` via Streamlit
+   `AppTest` in under 6 seconds, asserting all promised strings and exit 0.
+5. `python -m agentgate.export data/agentgate-v3.sqlite exports/` exports the live database into
+   `audit.csv`, `audit.json`, `outbox.csv`, and `summary.json` with automatic secret redaction.
 
-Dashboard section 4 shows the same numbers. Current result: 32/32 matched, 0 unauthorized
-executions, 0 false allows, 0 false denies, 32/32 complete audit rows, all six mutations detected.
+Dashboard section 4 shows the benchmark and red team attack board live.
 
-Honest caveat: the expectations were written by this team from the specification and frozen before the
-run. They are not independently authored. The mutation check is what makes the number meaningful.
+## Environment Variables
+
+- `AGENTGATE_PIN_RULEBOOK=1`: enforces cryptographic rulebook pinning in the dashboard. When set,
+  any out-of-band change to `data/policies.json` halts execution with `RULE-POLICY-DRIFT` until
+  explicitly adopted.
+- `AGENTGATE_RELOAD_TOKEN`: the secret authorization token required to adopt an updated rulebook
+  under pinned mode.
+- `AGENTGATE_DATA_DIR`: override the data directory (used by the test suite and rehearsal to run in a
+  clean scratch environment without touching live state).
 
 ## Honesty notes
 

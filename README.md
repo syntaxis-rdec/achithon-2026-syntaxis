@@ -40,7 +40,10 @@ Then open the local URL Streamlit prints. Full walkthrough: [docs/RUN.md](docs/R
 ```bash
 python -m benchmark.runner      # 32 frozen scenarios → benchmark/results.json
 python -m benchmark.mutations   # breaks the gateway six ways; every break must be detected
-pytest                          # 42 tests
+python -m redteam               # 22-attack red team board → redteam/results.json
+python demo/rehearse.py         # automated 12-beat rehearsal of stage demo in ~5s
+python -m agentgate.export data/agentgate-v3.sqlite exports/  # audit export with secret redaction
+pytest                          # 211+ tests (211 passed, 1 xfailed)
 ```
 
 Current result: **32/32 scenarios matched, 0 unauthorized executions, 0 false allows, 0 false denies,

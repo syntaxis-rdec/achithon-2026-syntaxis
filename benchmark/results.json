@@ -377,7 +377,7 @@
       "actual": {
         "allowed": true,
         "rule": "SEND-ANALYST",
-        "reason": "Allowed: manager@corp.example holds CONFIDENTIAL; artifact 'report-ad8a5c' is CONFIDENTIAL; recipient is approved for analyst.",
+        "reason": "Allowed: manager@corp.example holds CONFIDENTIAL; artifact 'report-f1ad3f' is CONFIDENTIAL; recipient is approved for analyst.",
         "raised": "",
         "artifact_label": ""
       },
@@ -402,7 +402,7 @@
       "actual": {
         "allowed": true,
         "rule": "SEND-ANALYST",
-        "reason": "Allowed: team@corp.example holds INTERNAL; artifact 'report-969c0e' is INTERNAL; recipient is approved for analyst.",
+        "reason": "Allowed: team@corp.example holds INTERNAL; artifact 'report-cce816' is INTERNAL; recipient is approved for analyst.",
         "raised": "",
         "artifact_label": ""
       },
@@ -427,7 +427,7 @@
       "actual": {
         "allowed": false,
         "rule": "RULE-RECIPIENT-CLEARANCE",
-        "reason": "Blocked: artifact 'report-8cbaa5' is CONFIDENTIAL but team@corp.example holds only INTERNAL.",
+        "reason": "Blocked: artifact 'report-bfedf5' is CONFIDENTIAL but team@corp.example holds only INTERNAL.",
         "raised": "",
         "artifact_label": ""
       },
@@ -577,7 +577,7 @@
       "actual": {
         "allowed": false,
         "rule": "RULE-PROVENANCE-TAMPERED",
-        "reason": "Blocked: artifact 'report-b738ef' descends from 'doc-004', which is no longer trusted. The report must be rebuilt from clean sources.",
+        "reason": "Blocked: artifact 'report-1666ab' descends from 'doc-004', which is no longer trusted. The report must be rebuilt from clean sources.",
         "raised": "",
         "artifact_label": ""
       },
@@ -727,7 +727,7 @@
       "actual": {
         "allowed": true,
         "rule": "DECLASSIFY-OFFICER",
-        "reason": "Allowed: security-officer released a copy of report-eaff14 from CONFIDENTIAL to INTERNAL. New artifact report-24cde0; original untouched.",
+        "reason": "Allowed: security-officer released a copy of report-567f54 from CONFIDENTIAL to INTERNAL. New artifact report-b94a7f; original untouched.",
         "raised": "",
         "artifact_label": ""
       },
@@ -752,7 +752,7 @@
       "actual": {
         "allowed": true,
         "rule": "SEND-ANALYST",
-        "reason": "Allowed: team@corp.example holds INTERNAL; artifact 'report-f345ff' is INTERNAL; recipient is approved for analyst.",
+        "reason": "Allowed: team@corp.example holds INTERNAL; artifact 'report-a6be31' is INTERNAL; recipient is approved for analyst.",
         "raised": "",
         "artifact_label": ""
       },
