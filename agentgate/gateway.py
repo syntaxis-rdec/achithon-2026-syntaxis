@@ -13,21 +13,30 @@ import uuid
 from . import labels, tools
 from .models import ActionRequest, Artifact, Decision, PolicySet
 from .policy import evaluate
+from .policy_guard import Guard, PolicyDrift
 
 
 class Session:
     """One actor's working session. Identity and origin are set here, not by the AI."""
 
-    def __init__(self, state, policies: PolicySet, actor_id: str, origin: str = "human"):
+    def __init__(self, state, policies: PolicySet, actor_id: str, origin: str = "human",
+                 guard: Guard | None = None):
         self.state = state
         self.policies = policies
         self.actor_id = actor_id
         self.origin = origin if origin in ("human", "agent") else "human"
+        self.guard = guard
         self.id = "s-" + uuid.uuid4().hex[:8]
 
     def submit(self, request: ActionRequest, workflow_id: str | None = None,
                step_index: int | None = None) -> tuple[Decision, object | None]:
         bound = request.model_copy(update={"actor_id": self.actor_id, "origin": self.origin})
+
+        if self.guard is not None:
+            try:
+                self.guard.check()
+            except PolicyDrift as drift:
+                return self._deny_drift(bound, drift, workflow_id, step_index)
 
         if bound.tool == "save_report":
             tainted = self.state.reads_for(self.actor_id)
@@ -51,6 +60,23 @@ class Session:
             if bound.tool == "read_document" and bound.resource_id:
                 self.state.record_read(self.actor_id, bound.resource_id)
         return decision, result
+
+    def _deny_drift(self, bound: ActionRequest, drift: PolicyDrift,
+                    workflow_id: str | None, step_index: int | None):
+        """Deny and audit a mid-session rulebook swap. Nothing is evaluated and no tool runs."""
+        decision = Decision(
+            allowed=False, rule_id="RULE-POLICY-DRIFT",
+            reason=(f"Blocked: the rulebook on disk no longer matches the one this session loaded "
+                    f"(pinned {drift.expected}, found {drift.found}). No action was evaluated and no "
+                    "tool ran. A reload with the operator token is required to accept new rules."),
+            label=None)
+        self.state.record_audit(
+            actor=bound.actor_id, origin=bound.origin, tool=bound.tool,
+            resource=bound.resource_id or ",".join(bound.source_ids) or None,
+            recipient=bound.recipient, allowed=False, rule_id=decision.rule_id,
+            reason=decision.reason, label=None, policy_hash=self.policies.fingerprint,
+            workflow_id=workflow_id, step_index=step_index)
+        return decision, None
 
 
 def _effect_key(workflow_id: str | None, step_index: int | None) -> str:

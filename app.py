@@ -1,13 +1,16 @@
 """AGENTGATE demo dashboard.
 
 Every tool call goes through a Session held in a registry, so read history survives
-clicks. Policy files are re-read on every run. Declassification is a separate store
-action, not a tool, and the page says so. Workflows store proposals only; the Resume
-button re-reads the rulebook from disk and re-decides every step that is not done.
+clicks. Policy files are re-read on every run, but a guarded registry only adopts a
+rulebook whose bytes still match the pin taken at load; a mid-session swap is denied
+under RULE-POLICY-DRIFT until an operator reloads with the token. Declassification is a
+separate store action, not a tool, and the page says so. Workflows store proposals only;
+the Resume button re-reads the rulebook from disk and re-decides every step that is done.
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -17,6 +20,7 @@ from agentgate import tools, workflow
 from agentgate.gateway import declassify
 from agentgate.models import ActionRequest
 from agentgate.policy import load_policy_set
+from agentgate.policy_guard import Guard
 from agentgate.sessions import SessionRegistry
 from agentgate.store import Store
 
@@ -24,6 +28,7 @@ ROOT = Path(__file__).resolve().parent
 DB = ROOT / "data" / "agentgate-v3.sqlite"
 PRINCIPALS = ROOT / "data" / "principals.json"
 POLICIES_FILE = ROOT / "data" / "policies.json"
+RELOAD_TOKEN = os.environ.get("AGENTGATE_RELOAD_TOKEN")
 
 
 def world():
@@ -37,9 +42,14 @@ def world():
 state, policies = world()
 
 if "registry" not in st.session_state:
-    st.session_state["registry"] = SessionRegistry(state, policies)
+    st.session_state["guard"] = Guard(PRINCIPALS, POLICIES_FILE, token=RELOAD_TOKEN)
+    st.session_state["registry"] = SessionRegistry(state, policies, st.session_state["guard"])
+guard: Guard = st.session_state["guard"]
 registry: SessionRegistry = st.session_state["registry"]
-registry.refresh(policies)
+
+drift = guard.drift_status()
+if drift is None:
+    registry.refresh(policies)
 
 st.set_page_config(page_title="AGENTGATE", layout="wide")
 st.title("AGENTGATE — permissions enforced before an AI acts")
@@ -49,6 +59,24 @@ st.caption(
     "labels travel with every derived report."
 )
 st.caption(f"Live · policy fingerprint `{policies.fingerprint}` · document text is untrusted")
+
+if drift is None:
+    st.caption(f"Rulebook integrity · pinned `{guard.recorded}` · re-checked before every decision")
+else:
+    st.error(
+        f"Rulebook drift · pinned `{drift.expected}`, on disk `{drift.found}`. Every action is "
+        "denied under `RULE-POLICY-DRIFT` and audited until an operator reloads."
+    )
+    with st.form("reload_rulebook"):
+        token = st.text_input("Operator reload token", type="password")
+        if st.form_submit_button("Accept the rulebook now on disk"):
+            try:
+                adopted = registry.reload_rulebook(token or None)
+            except PermissionError as exc:
+                st.error(str(exc))
+            else:
+                st.success(f"Adopted `{adopted.fingerprint}`. Reload history: {guard.reloads}")
+                st.rerun()
 
 left, middle, right = st.columns([1, 1.2, 1])
 
