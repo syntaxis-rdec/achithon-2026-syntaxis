@@ -282,3 +282,31 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+
+## [2026-10-30T15:27:04+05:30] Lane makhdum: hardening the injection pack inside owned files only
+
+User Prompt (verbatim, secrets redacted):
+"u solved 1/10 realistic problem of mine do start solving my(makhdum) assigned task as doing extra can stop his workflow"
+
+Agent Response Summary:
+Re-checked the lane brief line by line: the pack already satisfies it and the lane diff touches only
+data/eval_documents/, tests/test_injection.py, team/makhdum/NOTES.md and log.txt. Fixed the two defects
+that could break a later merge rather than add scope: the allow-path tests counted outbox rows without
+naming the recipient, so a payload-redirected delivery to vendor@outside.example would have passed, and
+the pair-03 canary was the string 'security-officer', which legitimately appears in the declassification
+refusal reasons in agentgate/gateway.py. Dropped one assertion that was true only by corpus layout.
+Suite still 59 passed; no new files, no edits outside the lane.
+
+Actions:
+* Edited tests/test_injection.py (addressee assertions, pair-03 marker, removed the vacuous artifact-body check)
+* Updated team/makhdum/NOTES.md findings and the Ready to merge hashes (b51625d, 7b92fac)
+* Ran .venv/Scripts/python.exe -m pytest (59 passed)
+* Committed 7b92fac on lane/makhdum
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none

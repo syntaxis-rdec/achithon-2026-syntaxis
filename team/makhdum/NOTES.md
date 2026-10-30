@@ -32,11 +32,23 @@ both twins were blocked for unrelated reasons".
   registers as INTERNAL and `integrity` stays `ok`. Confirmed in `test_pair_differs_only_in_text`.
 - **Denial reasons name identifiers, never text.** Across 36 decisions on hostile documents, no
   payload marker appears in `rule_id`, `reason` or `label`. That is the claim stated as an assertion.
+- **Delivery is checked by addressee, not by count.** The first cut of the pack asserted two outbox
+  rows and six executions for the allow path. A gateway that obeyed a payload and mailed
+  `vendor@outside.example` instead of `team@corp.example` would have satisfied both counts. The tests
+  now compare the recipient string in the outbox row and in `tools.EXECUTIONS`.
+- **Canary wording matters.** Pair 03 originally used `security-officer` as its marker, but that is
+  trusted vocabulary: the declassification refusals in `agentgate/gateway.py` put the literal string
+  `does not hold the security-officer role` into an audit reason. Any later flow touching
+  declassification would have failed the pack for the wrong reason, so the marker is now a phrase
+  only the hostile body contains.
 - **The report body does carry source text.** `tools.save_report` writes
   `d.body.splitlines()[0][:120]` into the artifact, while the title is derived from doc ids only. So
   text reaches the artifact body — but it stays under the inherited label and provenance, so it
   cannot leave through a recipient the policy rejects. Not a defect, worth knowing when reading the
   "policy never reads document text" line: policy never reads it; the tool copies one line of it.
+  Every payload sits after the first line of its body, so asserting the payload stays out of the
+  artifact body would have been true by corpus layout rather than by any property of the gateway.
+  That assertion is gone; the addressee assertion replaced it.
 - **Read history is per actor, and the flow depends on it.** `submit` merges `reads_for(actor)` into
   `save_report` sources. The pack keeps the agent as the reader and the analyst as the saver, so the
   save cites exactly the document under test and the two twins stay comparable.
@@ -61,6 +73,9 @@ None blocking. Two optional notes for whoever owns `docs/`:
 
 ## Ready to merge
 
-- Commit `b51625d` (`test: prove document text never changes a decision`).
-- 25 new tests; full suite 59 passed. Baseline 34 still green, benchmark 32/32, all six mutations
-  detected.
+- Lane tip `7b92fac`; work commits `b51625d` (corpus + 25 tests) and `7b92fac` (addressee and
+  canary hardening).
+- 25 new tests; full suite 59 passed against the 34-test baseline. Benchmark 32/32, all six
+  mutations detected, `benchmark/` and `data/documents/` untouched.
+- Scope claim: this proves invariance for six payload classes across three flows. It is a corpus,
+  not a proof about arbitrary text.
