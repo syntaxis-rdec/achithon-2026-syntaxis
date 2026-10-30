@@ -584,6 +584,38 @@ def get_available_payments():
     return report
 
 
+def get_allocation_history():
+    with get_connection() as conn:
+        rows = conn.execute("""
+            SELECT
+                a.id,
+                i.invoice_id,
+                i.customer_name,
+                p.payment_id,
+                a.allocated_amount,
+                a.confirmed_at
+            FROM allocations a
+            JOIN invoices i
+                ON a.invoice_id = i.id
+            JOIN payments p
+                ON a.payment_id = p.id
+            ORDER BY a.confirmed_at DESC, a.id DESC
+        """).fetchall()
+
+    history = []
+
+    for row in rows:
+        history.append({
+            "Allocation ID": row[0],
+            "Invoice ID": row[1],
+            "Customer": row[2],
+            "Payment ID": row[3],
+            "Allocated Amount": float(row[4]),
+            "Allocation Date": row[5]
+        })
+
+    return history
+
 
 if __name__ == "__main__":
     create_tables()

@@ -17,6 +17,7 @@ from database import (
     get_available_invoices,
     get_available_payments,
     confirm_allocation,
+    get_allocation_history,
 )
 
 from validation import (
@@ -416,3 +417,32 @@ else:
 
             except Exception as e:
                 st.error(f"Allocation failed: {e}")
+
+
+st.divider()
+
+st.header("9. Payment Allocation History")
+
+allocation_history = get_allocation_history()
+
+if allocation_history:
+    history_df = pd.DataFrame(allocation_history)
+
+    st.dataframe(
+        history_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    csv_data = history_df.to_csv(index=False).encode("utf-8")
+
+    st.download_button(
+        label="Download Allocation History CSV",
+        data=csv_data,
+        file_name="payment_allocation_history.csv",
+        mime="text/csv"
+    )
+
+else:
+    st.info("No payment allocation history found.")
+
