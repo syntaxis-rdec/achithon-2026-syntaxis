@@ -4,6 +4,8 @@ Integrity rules:
 - A document is fingerprinted over title, owner, classification and body at first load.
   Any later change marks it tampered and freezes the registered label.
 - An unrecognised classification is accepted as RESTRICTED and marked invalid, never a crash.
+- A delivered message carries the workflow step that produced it, so a retried step cannot
+  put the same delivery in the inbox twice.
 """
 
 from __future__ import annotations
@@ -33,16 +35,24 @@ CREATE TABLE IF NOT EXISTS audit(
   step_index INTEGER, justification TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS outbox(
   id INTEGER PRIMARY KEY AUTOINCREMENT, artifact_id TEXT NOT NULL,
-  recipient TEXT NOT NULL, classification TEXT DEFAULT '', ts TEXT NOT NULL);
+  recipient TEXT NOT NULL, classification TEXT DEFAULT '', ts TEXT NOT NULL,
+  effect_key TEXT);
 CREATE TABLE IF NOT EXISTS workflows(
   id TEXT PRIMARY KEY, status TEXT NOT NULL, payload TEXT NOT NULL,
   updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS workflow_steps(
   workflow_id TEXT NOT NULL, idx INTEGER NOT NULL, status TEXT NOT NULL,
-  request TEXT NOT NULL, reason TEXT DEFAULT '', PRIMARY KEY(workflow_id, idx));
+  request TEXT NOT NULL, reason TEXT DEFAULT '', output TEXT DEFAULT '',
+  PRIMARY KEY(workflow_id, idx));
 CREATE TABLE IF NOT EXISTS read_history(
   actor_id TEXT NOT NULL, doc_id TEXT NOT NULL, ts TEXT NOT NULL,
   PRIMARY KEY(actor_id, doc_id));
+"""
+
+# Created after the migration below: an old database has neither the index nor the column.
+INDEXES = """
+CREATE UNIQUE INDEX IF NOT EXISTS outbox_effect_key
+  ON outbox(effect_key) WHERE effect_key IS NOT NULL;
 """
 
 VALID = ("PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED")
@@ -63,7 +73,19 @@ class Store:
         self.conn = sqlite3.connect(self.path)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        self._migrate()
+        self.conn.executescript(INDEXES)
         self.conn.commit()
+
+    def _columns(self, table: str) -> list[str]:
+        return [row["name"] for row in self.conn.execute(f"PRAGMA table_info({table})")]
+
+    def _migrate(self) -> None:
+        """Databases written before resumption lack these columns; add them in place."""
+        if "effect_key" not in self._columns("outbox"):
+            self.conn.execute("ALTER TABLE outbox ADD COLUMN effect_key TEXT")
+        if "output" not in self._columns("workflow_steps"):
+            self.conn.execute("ALTER TABLE workflow_steps ADD COLUMN output TEXT DEFAULT ''")
 
     # -- documents ---------------------------------------------------------
     def add_document(self, doc: Document) -> None:
@@ -183,10 +205,17 @@ class Store:
         return [dict(r) for r in rows]
 
     # -- mock inbox --------------------------------------------------------
-    def deliver(self, artifact_id: str, recipient: str, classification: str = "") -> None:
+    def deliver(self, artifact_id: str, recipient: str, classification: str = "",
+                effect_key: str = "") -> None:
+        """Insert one message. A repeated effect_key is dropped, never duplicated.
+
+        The only constraint this statement can hit is the unique effect key, so OR IGNORE
+        cannot mask a real failure: a retried workflow step simply leaves one row.
+        """
         self.conn.execute(
-            "INSERT INTO outbox(artifact_id,recipient,classification,ts) VALUES (?,?,?,?)",
-            (artifact_id, recipient, classification, now()))
+            "INSERT OR IGNORE INTO outbox(artifact_id,recipient,classification,ts,effect_key)"
+            " VALUES (?,?,?,?,?)",
+            (artifact_id, recipient, classification, now(), effect_key or None))
         self.conn.commit()
 
     def list_outbox(self) -> list[dict]:
@@ -195,7 +224,8 @@ class Store:
 
     # -- workflows ---------------------------------------------------------
     def save_workflow(self, workflow_id: str, status: str, payload: dict) -> None:
-        self.conn.execute("INSERT OR REPLACE INTO workflows VALUES (?,?,?,?)",
+        self.conn.execute("INSERT OR REPLACE INTO workflows(id,status,payload,updated_at)"
+                          " VALUES (?,?,?,?)",
                           (workflow_id, status, json.dumps(payload), now()))
         self.conn.commit()
 
@@ -213,8 +243,10 @@ class Store:
 
     def add_steps(self, workflow_id: str, requests: list[dict]) -> None:
         for idx, request in enumerate(requests):
-            self.conn.execute("INSERT OR REPLACE INTO workflow_steps VALUES (?,?,?,?,?)",
-                              (workflow_id, idx, "pending", json.dumps(request), ""))
+            self.conn.execute(
+                "INSERT OR REPLACE INTO workflow_steps(workflow_id,idx,status,request,reason,output)"
+                " VALUES (?,?,?,?,?,'')",
+                (workflow_id, idx, "pending", json.dumps(request), ""))
         self.conn.commit()
 
     def steps_for(self, workflow_id: str) -> list[dict]:
@@ -222,12 +254,21 @@ class Store:
             "SELECT * FROM workflow_steps WHERE workflow_id=? ORDER BY idx",
             (workflow_id,)).fetchall()
         return [{"workflow_id": r["workflow_id"], "idx": r["idx"], "status": r["status"],
-                 "request": json.loads(r["request"]), "reason": r["reason"]} for r in rows]
+                 "request": json.loads(r["request"]), "reason": r["reason"],
+                 "output": r["output"]} for r in rows]
 
-    def set_step(self, workflow_id: str, idx: int, status: str, reason: str = "") -> None:
-        self.conn.execute(
-            "UPDATE workflow_steps SET status=?, reason=? WHERE workflow_id=? AND idx=?",
-            (status, reason, workflow_id, idx))
+    def set_step(self, workflow_id: str, idx: int, status: str, reason: str = "",
+                 output: str | None = None) -> None:
+        """Record where a step ended. `output` keeps an id a later step may reference."""
+        if output is None:
+            self.conn.execute(
+                "UPDATE workflow_steps SET status=?, reason=? WHERE workflow_id=? AND idx=?",
+                (status, reason, workflow_id, idx))
+        else:
+            self.conn.execute(
+                "UPDATE workflow_steps SET status=?, reason=?, output=?"
+                " WHERE workflow_id=? AND idx=?",
+                (status, reason, output, workflow_id, idx))
         self.conn.commit()
 
     def close(self) -> None:

@@ -58,10 +58,11 @@ def save_report(actor_id: str, source_doc_ids: list[str], title: str | None, sta
     return artifact_id
 
 
-def deliver_inbox(actor_id: str, artifact_id: str, recipient: str, state, gate=None) -> str:
+def deliver_inbox(actor_id: str, artifact_id: str, recipient: str, state, gate=None,
+                  effect_key: str = "") -> str:
     _require_gate(gate)
     EXECUTIONS.append(f"deliver_inbox:{artifact_id}->{recipient}")
     artifact = state.get_artifact(artifact_id)
     state.deliver(artifact_id, recipient,
-                  artifact.label.classification if artifact else "")
+                  artifact.label.classification if artifact else "", effect_key)
     return f"Message containing {artifact_id} placed in the mock inbox for {recipient}"

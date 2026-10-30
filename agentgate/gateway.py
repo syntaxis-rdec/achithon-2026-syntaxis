@@ -2,6 +2,8 @@
 
 The session owns the actor and the origin. A request cannot choose who it is.
 Read history is keyed by actor, so closing a session does not launder a source.
+A workflow step is submitted with its coordinates; they land on the audit row and
+become the idempotency key of the effect, so a retried step cannot deliver twice.
 """
 
 from __future__ import annotations
@@ -23,7 +25,8 @@ class Session:
         self.origin = origin if origin in ("human", "agent") else "human"
         self.id = "s-" + uuid.uuid4().hex[:8]
 
-    def submit(self, request: ActionRequest) -> tuple[Decision, object | None]:
+    def submit(self, request: ActionRequest, workflow_id: str | None = None,
+               step_index: int | None = None) -> tuple[Decision, object | None]:
         bound = request.model_copy(update={"actor_id": self.actor_id, "origin": self.origin})
 
         if bound.tool == "save_report":
@@ -39,17 +42,25 @@ class Session:
             recipient=bound.recipient, allowed=decision.allowed, rule_id=decision.rule_id,
             reason=decision.reason, label=decision.label,
             policy_hash=self.policies.fingerprint,
+            workflow_id=workflow_id, step_index=step_index,
         )
 
         result: object | None = None
         if decision.allowed:
-            result = _dispatch(bound, self.state)
+            result = _dispatch(bound, self.state, _effect_key(workflow_id, step_index))
             if bound.tool == "read_document" and bound.resource_id:
                 self.state.record_read(self.actor_id, bound.resource_id)
         return decision, result
 
 
-def _dispatch(request: ActionRequest, state):
+def _effect_key(workflow_id: str | None, step_index: int | None) -> str:
+    """Stable per step, so re-running a step reuses the same inbox row."""
+    if workflow_id is None or step_index is None:
+        return ""
+    return f"{workflow_id}:{step_index}"
+
+
+def _dispatch(request: ActionRequest, state, effect_key: str = ""):
     if request.tool == "read_document":
         return tools.read_document(request.actor_id, request.resource_id or "", state,
                                    gate=tools._GATE)
@@ -58,7 +69,8 @@ def _dispatch(request: ActionRequest, state):
                                  gate=tools._GATE)
     if request.tool == "deliver_inbox":
         return tools.deliver_inbox(request.actor_id, request.resource_id or "",
-                                   request.recipient or "", state, gate=tools._GATE)
+                                   request.recipient or "", state, gate=tools._GATE,
+                                   effect_key=effect_key)
     raise ValueError(f"unknown tool {request.tool}")
 
 
