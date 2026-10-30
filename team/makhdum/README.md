@@ -1,6 +1,7 @@
 # Makhdum — Injection-Resistance Evidence Pack
 
-Read `team/README.md` first, then the repo-root `AGENTS.md`.
+**Your branch:** `lane/makhdum`. Never commit or push to `main`. Read `team/README.md` first, then the
+repo-root `AGENTS.md`.
 
 ## Context you need
 

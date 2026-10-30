@@ -1,6 +1,7 @@
 # Aryan — Audit Export and Submission Packaging
 
-Read `team/README.md` first, then the repo-root `AGENTS.md`.
+**Your branch:** `lane/aryan`. Never commit or push to `main`. Read `team/README.md` first, then the
+repo-root `AGENTS.md`.
 
 ## Context you need
 
