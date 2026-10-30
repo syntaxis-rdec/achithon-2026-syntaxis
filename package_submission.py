@@ -26,6 +26,7 @@ INCLUDED_DIRS = [
     "redteam",
     "team",
     "tests",
+    "web",
 ]
 
 INCLUDED_FILES = [
