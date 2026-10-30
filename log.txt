@@ -1078,3 +1078,28 @@ tool=Antigravity
 problem_id=PS08
 branch=main
 repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+
+## [2026-10-31T02:04:00+05:30] Enhance frontend with 1-click presets, real CSV export, and canary details
+
+User Prompt (verbatim, secrets redacted):
+make it better
+
+Agent Response Summary:
+Upgraded the web interface (both live Flask index.html and offline standalone.html) with interactive 1-click demonstration scenario presets, genuine client-side CSV audit export, and an adversarial canary inspection breakdown. Users can now click any of the 4 demo beats in the Policy Sandbox to immediately populate and evaluate authorized reads, derived provenance lattice tracking, egress exfiltration blocking, and zero-authority prompt injection neutralization. The audit log export button now dynamically generates and downloads a cryptographically sealed CSV file containing all SQLite events and SHA-256 Merkle hashes. In the Resources viewer, inspecting doc-003 reveals the embedded prompt injection directive and explains the gateway's text-blindness security guarantee. Re-verified all 262 unit tests, 10 live web tests, and 12/12 rehearsal beats.
+
+Actions:
+* Added 4 one-click demonstration beat presets to Interactive Policy Sandbox in web/templates/index.html and web/standalone.html
+* Wired real client-side CSV blob download to Export CSV button in audit logs
+* Added prompt injection canary payload breakdown and text-blindness security guarantee to resource details modal
+* Mirrored all enhancements to web/standalone.html for zero-server offline portability
+* Ran pytest (262 passed, 1 xfailed in 88s; web tests: 10 passed in 0.82s)
+* Ran demo/rehearse.py (12/12 beats green in 4.3s)
+* Repackaged agentgate-PS08-submission.zip (100 files, 0.31 MB)
+* Committed and pushed commit b01a75f to origin/main
+
+Context:
+tool=Antigravity
+problem_id=PS08
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
