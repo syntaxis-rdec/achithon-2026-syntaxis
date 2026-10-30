@@ -5,8 +5,8 @@ work lands, so neither lane edits `agentgate/` internals, `app.py`, or `benchmar
 
 | Person | Lane | Folder | Branch |
 |---|---|---|---|
-| Makhdum | Injection-resistance evidence pack | `team/makhdum/` | `lane/makhdum` |
-| Aryan | Audit export and submission packaging | `team/aryan/` | `lane/aryan` |
+| Makhdum | Task 1 done: injection pack. **Now: policy integrity guard + red-team harness** | `team/makhdum/` (`TASK-2.md`) | `lane/makhdum` |
+| Aryan | Audit export and submission packaging — **nothing pushed yet** | `team/aryan/` | `lane/aryan` |
 
 `main` belongs to Tanush. Never commit or push to `main`. Work only on your lane branch.
 
