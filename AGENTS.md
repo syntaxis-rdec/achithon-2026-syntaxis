@@ -2,6 +2,12 @@
 
 Multi-Problem Hackathon Repository — General Agent Instructions
 
+> **Status in this checkout (read first).** The problem statement is already chosen: **PS08 AGENTGATE**.
+> The specification lives at `docs/PS08.md`. The other `PS##` files were deliberately removed by the team;
+> there are no PS folders to inspect and nothing to delete or clean. Skip the selection and cleanup steps in
+> §0 and §1, keep appending to `log.txt` as §2 and §5 require, and follow the project contract in §6.
+> Teammate lanes live under `team/` and work only on their own branch.
+
 This file is the single source of truth for any AI coding agent working in this repository, including Claude Code, OpenAI Codex CLI / Codex Cloud, Gemini CLI, Cursor, Windsurf, opencode, Aider, goose, Factory, RooCode, JetBrains Junie, GitHub Copilot, Devin, or any other `AGENTS.md`-aware tool.
 
 Read this file in full before taking any action. Obey it unless the user or platform provides higher-priority instructions.
