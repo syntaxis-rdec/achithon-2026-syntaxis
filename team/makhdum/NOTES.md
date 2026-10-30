@@ -163,3 +163,49 @@ trusted on sight (LF-2). Both are `xfail(strict)` in `tests/test_redteam.py`.
   `benchmark.mutations` — all six detected. `benchmark/` and `agentgate/store.py` schema untouched.
 - Task 2's own done-means, item by item: attack 12 denies with `RULE-POLICY-DRIFT` and audits; 22
   named attacks; the pin moves only through `reload_rulebook(token)`; every turn is in `log.txt`.
+
+---
+
+# Task 3 — automated rehearsal
+
+Full write-up with the captured runs: `team/makhdum/REPORT-3.md`.
+
+`python demo/rehearse.py` seeds a scratch world with `demo/seed.py`, then drives all twelve beats of
+`docs/DEMO_SCRIPT.md` through `app.py` with `streamlit.testing.v1.AppTest`, asserting each promised
+string and timing each beat: **12/12 green in 5.8 s** (limit 90 s), exit 0. `--break-rule RULE_ID`
+removes one rule from the scratch copy only and makes the rehearsal name the beaten rule: removing
+`SAVE-ANALYST` fails beat 2 as `RULE-NO-GRANT`, and the repository rulebook hash is identical before
+and after. `--cut 60` runs the short cut in script order.
+
+`tests/test_rehearsal.py` drives the same `rehearse()` function, so the test cannot become a weaker
+copy of the thing the presenter runs. It asserts the clean run, the resumption evidence (one step,
+decided twice, by `b76a1526a887e3d2` then `12a49fe3ae7fc597`), the deliberate failure, and that a
+broken run leaves `data/policies.json` untouched.
+
+The click driver is loaded by path from `tests/test_demo_beats.py` rather than duplicated, so the
+merged demo tests and the rehearsal cannot drift apart. That is deliberate coupling: changing that
+file changes this rehearsal.
+
+## Findings (task 3)
+
+- **LF-3 — `docs/DEMO_SCRIPT.md` quotes a tightened fingerprint the app never renders.** Line 26 says
+  tightened `c0a7b0e1860531db`; the app renders `b76a1526a887e3d2`. It has been wrong since the file
+  was introduced (`380d0ec`) — no revision of `demo/policies_tight.json` hashes to `c0a7…`. A
+  presenter reading beats 8–10 aloud would say a hash that is not on screen. It blocks nothing; the
+  default `12a49fe3ae7fc597` is correct. The script is protected, so the rehearsal reports the
+  mismatch on every run (beat 0, warning, does not fail) instead of hiding or enforcing it.
+
+## Requests (task 3)
+
+- **`docs/DEMO_SCRIPT.md:26`** — change `c0a7b0e1860531db` to `b76a1526a887e3d2`. Not mine to edit.
+- **`docs/RUN.md`** — mention `python demo/rehearse.py` as the pre-stage check, and that it exits 1
+  naming the beat.
+- Nothing else: `agentgate/`, `app.py`, `benchmark/` and `data/` were not touched by this task.
+
+## Ready to merge (task 3)
+
+- Commit `a83b94c` (`test: add automated rehearsal of the stage demo`) — the last code commit; the
+  commit after it carries this note and the report only.
+- `python demo/rehearse.py` — 12/12 beats, 5.8 s, exit 0. `--break-rule SAVE-ANALYST` — exit 1, beat 2.
+- `pytest` — **204 passed, 1 xfailed** (the xfail is LF-2 from task 2, kept strict). 11 of those are
+  new rehearsal tests; no existing test was edited, skipped or weakened.
