@@ -397,10 +397,10 @@ canvas{width:100%;height:100%;display:block}
         <span class="badge-dot" id="notifCount">4</span>
       </button>
       <div class="profile">
-        <div class="avatar">PS</div>
+        <div class="avatar" style="background:linear-gradient(135deg,#3B82F6,#8B5CF6)">OP</div>
         <div>
-          <div class="profile-name">Priya Sharma</div>
-          <div class="profile-role">Security Administrator</div>
+          <div class="profile-name">SecOps Gatekeeper</div>
+          <div class="profile-role">Gateway Administrator</div>
         </div>
       </div>
     </header>
@@ -781,13 +781,13 @@ canvas{width:100%;height:100%;display:block}
             <div class="card-head"><h3>Administrator Profile</h3></div>
             <div class="card-body">
               <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">
-                <div class="avatar" style="width:52px;height:52px;font-size:1rem;border-radius:13px">PS</div>
-                <div><b style="font-size:1rem">Priya Sharma</b><div style="font-size:.75rem;color:var(--text2)">Security Administrator · AGENTGATE Platform</div></div>
+                <div class="avatar" style="width:52px;height:52px;font-size:1rem;border-radius:13px;background:linear-gradient(135deg,#3B82F6,#8B5CF6)">OP</div>
+                <div><b style="font-size:1rem">SecOps Gatekeeper</b><div style="font-size:.75rem;color:var(--text2)">Security Operator · AGENTGATE System</div></div>
               </div>
-              <div class="kv"><span class="k">Email</span><span class="v">priya.sharma@corp.com</span></div>
-              <div class="kv"><span class="k">Role</span><span class="v">Security Administrator</span></div>
-              <div class="kv"><span class="k">Policy scope</span><span class="v">Full gateway policy management</span></div>
-              <div class="kv"><span class="k">MFA</span><span class="v" style="color:#4ADE80">Enabled (hardware key)</span></div>
+              <div class="kv"><span class="k">Principal Identity</span><span class="v">secops-operator</span></div>
+              <div class="kv"><span class="k">Role</span><span class="v">Gateway Administrator</span></div>
+              <div class="kv"><span class="k">Policy Scope</span><span class="v">Full gateway policy management</span></div>
+              <div class="kv"><span class="k">MFA</span><span class="v" style="color:#4ADE80">Enabled (Session-bound)</span></div>
             </div>
           </div>
           <div class="card">
@@ -1054,9 +1054,36 @@ tick();setInterval(tick,1000);
 
 /* ---------------- Notifications ---------------- */
 function renderNotifs(){
-  $('#notifList').innerHTML=NOTIFS.map(n=>{
-    const ic=n.type==='block'?['ic-red',ICONS.x]:['ic-green',ICONS.check];
-    return '<div class="notif-item"><div class="ic '+ic[0]+'">'+ic[1]+'</div><div>'+esc(n.text)+'<div class="t">'+esc(n.t)+'</div></div></div>';
+  const blockedEvents = AUDIT.filter(a => a.decision === 'BLOCK');
+  const allowedEvents = AUDIT.filter(a => a.decision === 'ALLOW');
+
+  const notifItems = [];
+  blockedEvents.slice(0, 3).forEach(b => {
+    notifItems.push({
+      type: 'block',
+      text: 'Action blocked: ' + b.action + ' on ' + b.resource + ' (' + (b.rule_id || 'denied') + ')',
+      t: b.timestamp ? b.timestamp.slice(11, 19) : 'Live'
+    });
+  });
+  allowedEvents.slice(0, 2).forEach(a => {
+    notifItems.push({
+      type: 'ok',
+      text: 'Authorized: ' + a.action + ' on ' + a.resource + ' (' + (a.rule_id || 'allowed') + ')',
+      t: a.timestamp ? a.timestamp.slice(11, 19) : 'Live'
+    });
+  });
+
+  if (notifItems.length === 0) {
+    $('#notifList').innerHTML = '<div class="empty" style="padding:24px">No recent security alerts. All tools idle.</div>';
+    $('#notifCount').style.display = 'none';
+    return;
+  }
+
+  $('#notifCount').style.display = 'flex';
+  $('#notifCount').textContent = notifItems.length;
+  $('#notifList').innerHTML = notifItems.map(n => {
+    const ic = n.type === 'block' ? ['ic-red', ICONS.x] : ['ic-green', ICONS.check];
+    return '<div class="notif-item"><div class="ic ' + ic[0] + '">' + ic[1] + '</div><div>' + esc(n.text) + '<div class="t">' + esc(n.t) + '</div></div></div>';
   }).join('');
 }
 renderNotifs();
@@ -1134,23 +1161,53 @@ function setupCanvas(cv){
 function drawActivityChart(){
   const cv=$('#activityChart');if(!cv.parentElement.offsetWidth)return;
   const {ctx,w,h}=setupCanvas(cv);
-  const allowed=[8,12,9,15,11,18,14,10,16,13,19,15,12,17];
-  const blocked =[2,3,1,4,2,5,3,2,4,3,6,4,3,5];
-  const pad=28,max=Math.max(...allowed.map((v,i)=>v+blocked[i]))+4;
-  const bw=(w-pad*2)/14;
   ctx.clearRect(0,0,w,h);
+
+  const total = AUDIT.length;
+  if(total === 0){
+    ctx.fillStyle='#64748B';ctx.font='600 13px Inter';ctx.textAlign='center';
+    ctx.fillText('No recorded activity in database yet', w/2, h/2);
+    return;
+  }
+
+  const slots = Math.min(14, Math.max(4, total));
+  const allowed = new Array(slots).fill(0);
+  const blocked = new Array(slots).fill(0);
+
+  // Group real events chronologically
+  AUDIT.forEach((e, idx) => {
+    const slotIdx = Math.min(slots - 1, Math.floor((idx / total) * slots));
+    if (e.decision === 'ALLOW') allowed[slotIdx]++;
+    else blocked[slotIdx]++;
+  });
+
+  const pad=28;
+  const max=Math.max(1, ...allowed.map((v,i)=>v+blocked[i])) + 1;
+  const bw=(w-pad*2)/slots;
+
   ctx.strokeStyle='#263449';ctx.lineWidth=1;ctx.font='10px JetBrains Mono';ctx.fillStyle='#64748B';
   for(let g=0;g<=4;g++){
     const y=h-24-(h-52)*g/4;
     ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(w-pad/2,y);ctx.stroke();
     ctx.fillText(Math.round(max*g/4),4,y+3);
   }
-  for(let i=0;i<14;i++){
-    const x=pad+i*bw+bw*0.18,cw=bw*0.64;
-    const aH=(h-52)*allowed[i]/max,bH=(h-52)*blocked[i]/max;
-    ctx.fillStyle='#3B82F6';ctx.fillRect(x,h-24-aH,cw,aH);
-    ctx.fillStyle='#EF4444';ctx.fillRect(x,h-24-aH-bH,cw,bH);
+
+  for(let i=0;i<slots;i++){
+    const x=pad+i*bw+bw*0.18, cw=bw*0.64;
+    const aH=(h-52)*allowed[i]/max, bH=(h-52)*blocked[i]/max;
+    if (aH > 0) {
+      ctx.fillStyle='#3B82F6';ctx.fillRect(x,h-24-aH,cw,aH);
+    }
+    if (bH > 0) {
+      ctx.fillStyle='#EF4444';ctx.fillRect(x,h-24-aH-bH,cw,bH);
+    }
   }
+
+  ctx.fillStyle='#334155';ctx.fillRect(pad, h-24, w - pad*2, 1);
+  ctx.fillStyle='#64748B';ctx.font='10px JetBrains Mono';ctx.textAlign='left';
+  ctx.fillText('Earliest', pad, h-8);
+  ctx.textAlign='right';
+  ctx.fillText('Latest (' + total + ' SQLite events)', w - pad/2, h-8);
 }
 function drawDecisionChart(){
   const cv=$('#decisionChart');if(!cv.parentElement.offsetWidth)return;
@@ -1223,6 +1280,49 @@ function openActionDetails(id){
 
 /* ---------------- Policies ---------------- */
 function renderPolicies(){
+  if (SNAPSHOT && SNAPSHOT.policy && SNAPSHOT.policy.rule_items && SNAPSHOT.policy.rule_items.length > 0) {
+    const rules = SNAPSHOT.policy.rule_items;
+    $('#policyCategories').innerHTML =
+      '<div class="card" style="margin-bottom:18px">' +
+        '<div class="card-head"><h3>Live Security Rulebook · Active Enforcements</h3>' +
+          '<div class="sub">Rulebook Fingerprint: <code>' + (SNAPSHOT.policy.fingerprint || 'unpinned') + '</code> · ' + rules.length + ' rules actively evaluated</div>' +
+        '</div>' +
+        '<div class="card-body"><div class="pol-grid">' +
+        rules.map((r, ri) =>
+          '<div class="pol-card">' +
+            '<div class="pol-top">' +
+              '<div class="ic ic-blue">' + ICONS.shield + '</div>' +
+              '<div><h4>' + esc(r.id) + '</h4><small class="mono">Role: ' + esc(r.role) + ' · Max: ' + esc(r.max) + '</small></div>' +
+            '</div>' +
+            '<p>' + esc(r.description) + '</p>' +
+            '<div class="pol-foot">' +
+              '<label class="switch"><input type="checkbox" checked data-pol="' + ri + '"><span class="slider"></span></label>' +
+              '<span class="badge b-allow">ACTIVE</span>' +
+              '<button class="btn btn-sm" style="margin-left:auto" data-realrule="' + ri + '">Details</button>' +
+            '</div>' +
+          '</div>'
+        ).join('') +
+        '</div></div></div>';
+
+    $$('[data-pol]').forEach(inp => inp.onchange = () => {
+      readOnly('Policy modification');
+      inp.checked = true;
+    });
+
+    $$('[data-realrule]').forEach(b => b.onclick = () => {
+      const r = rules[Number(b.dataset.realrule)];
+      openModal('Policy Rule ' + r.id,
+        '<div class="section-label">Active Rule Enforcement</div>' +
+        '<div class="kv"><span class="k">Rule ID</span><span class="v mono">' + esc(r.id) + '</span></div>' +
+        '<div class="kv"><span class="k">Authorized Role</span><span class="v mono">' + esc(r.role) + '</span></div>' +
+        '<div class="kv"><span class="k">Permitted Tool</span><span class="v mono">' + esc(r.tool) + '</span></div>' +
+        '<div class="kv"><span class="k">Max Classification</span><span class="v">' + badgeFor(r.max) + '</span></div>' +
+        '<div class="section-label">Security Specification</div><p style="font-size:.83rem;color:var(--text2)">' + esc(r.description) + '</p>'
+      );
+    });
+    return;
+  }
+
   $('#policyCategories').innerHTML=POLICY_CATEGORIES.map((cat,ci)=>
     '<div class="card" style="margin-bottom:18px"><div class="card-head"><h3>'+esc(cat.name)+'</h3><div class="sub">'+esc(cat.desc)+'</div></div><div class="card-body"><div class="pol-grid">'+
     cat.items.map((p,pi)=>
