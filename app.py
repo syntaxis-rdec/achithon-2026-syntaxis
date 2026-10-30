@@ -8,6 +8,8 @@ button re-reads the rulebook from disk and re-decides every step that is not don
 
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -21,25 +23,38 @@ from agentgate.sessions import SessionRegistry
 from agentgate.store import Store
 
 ROOT = Path(__file__).resolve().parent
-DB = ROOT / "data" / "agentgate-v3.sqlite"
-PRINCIPALS = ROOT / "data" / "principals.json"
-POLICIES_FILE = ROOT / "data" / "policies.json"
+# AGENTGATE_DATA_DIR lets demo/seed.py and the beat tests point the dashboard at a
+# scratch copy of data/ instead of the live folder. Unset, nothing changes.
+DATA = Path(os.environ.get("AGENTGATE_DATA_DIR") or ROOT / "data")
+DB = DATA / "agentgate-v3.sqlite"
+PRINCIPALS = DATA / "principals.json"
+POLICIES_FILE = DATA / "policies.json"
+DOCS_DIR = DATA / "documents"
+DEMO_STATE = DATA / "demo_seed.json"
 
 
 def world():
     """Fresh store handle and fresh policy read on every rerun. No caching."""
     store = Store(DB)
-    store.load_documents_from_dir(ROOT / "data" / "documents")
+    store.load_documents_from_dir(DOCS_DIR)
     policies = load_policy_set(PRINCIPALS, POLICIES_FILE)
     return store, policies
 
 
+def staged_justification() -> str:
+    """Text written in advance by demo/seed.py, so the release beat needs no typing."""
+    if not DEMO_STATE.exists():
+        return ""
+    return json.loads(DEMO_STATE.read_text(encoding="utf-8")).get("justification", "")
+
+
 state, policies = world()
 
-if "registry" not in st.session_state:
-    st.session_state["registry"] = SessionRegistry(state, policies)
-registry: SessionRegistry = st.session_state["registry"]
-registry.refresh(policies)
+# The registry and its SQLite handle live for one run only. A connection belongs to the
+# thread that opened it, and Streamlit may rerun a page on a different thread, so keeping a
+# handle in session_state can crash mid-demo. Read history is in the read_history table, not
+# in the Session object, so a fresh registry per run behaves the same.
+registry = SessionRegistry(state, policies)
 
 st.set_page_config(page_title="AGENTGATE", layout="wide")
 st.title("AGENTGATE — permissions enforced before an AI acts")
@@ -127,7 +142,14 @@ with middle:
                                  format_func=lambda i: f"{i} — "
                                  f"{next(a.label.classification for a in artifacts if a.id == i)}")
         target_level = st.selectbox("New classification", ["PUBLIC", "INTERNAL", "CONFIDENTIAL"])
-        justification = st.text_area("Written justification", height=70)
+        prefilled = staged_justification()
+        if prefilled and "release_justification" not in st.session_state:
+            st.session_state["release_justification"] = prefilled
+        if prefilled:
+            st.caption("Staged for this demo: the justification below was written in advance by "
+                       "demo/seed.py so this beat is click-only. In normal use the officer types it.")
+        justification = st.text_area("Written justification", height=70,
+                                     key="release_justification")
         if st.button("Release"):
             try:
                 child = declassify(state, policies, actor, target_id, target_level, justification)

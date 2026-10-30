@@ -16,6 +16,7 @@ __pycache__/
 *.sqlite
 *.db
 data/outbox/
+data/demo_seed.json
 agent-trace/
 exports/
 
