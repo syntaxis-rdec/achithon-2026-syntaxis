@@ -160,8 +160,22 @@ st.markdown("""
     <span class="sec-badge sec-badge-cyan">📄 DOCUMENT TEXT: UNTRUSTED & UNPARSED</span>
     <span class="sec-badge sec-badge-purple">⛓️ MERKLE AUDIT CHAIN: TAMPER-EVIDENT</span>
     <span class="sec-badge sec-badge-gold">🪤 CANARY HONEYTOKENS: ARMED</span>
+    <span class="sec-badge sec-badge-cyan">🌐 FLASK EVIDENCE SERVER: http://localhost:5000</span>
 </div>
 """, unsafe_allow_html=True)
+
+with st.expander("✨ NEW: Live Dark-Mode Control Center (Embedded UI)", expanded=True):
+    st.markdown(
+        "👉 **Viewing modes:** Scroll within this interactive dark-mode dashboard, or open fullscreen at "
+        "[**http://localhost:5000**](http://localhost:5000) (live Flask backend)."
+    )
+    if hasattr(st, "iframe"):
+        st.iframe("http://127.0.0.1:5000", height=880)
+    else:
+        st.markdown(
+            '<iframe src="http://127.0.0.1:5000" width="100%" height="880" frameborder="0" style="background:#0B1120;border-radius:12px;"></iframe>',
+            unsafe_allow_html=True,
+        )
 
 with st.expander("👉 Evaluator & Judge Quick-Start Guide (Click to expand)"):
     st.markdown("""
