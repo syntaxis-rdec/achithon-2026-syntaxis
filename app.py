@@ -10,7 +10,9 @@ the Resume button re-reads the rulebook from disk and re-decides every step that
 
 from __future__ import annotations
 
+import json
 import os
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -18,38 +20,67 @@ import streamlit as st
 
 from agentgate import tools, workflow
 from agentgate.gateway import declassify
-from agentgate.models import ActionRequest
+from agentgate.models import ActionRequest, PolicySet
 from agentgate.policy import load_policy_set
 from agentgate.policy_guard import Guard
 from agentgate.sessions import SessionRegistry
 from agentgate.store import Store
 
 ROOT = Path(__file__).resolve().parent
-DB = ROOT / "data" / "agentgate-v3.sqlite"
-PRINCIPALS = ROOT / "data" / "principals.json"
-POLICIES_FILE = ROOT / "data" / "policies.json"
+# AGENTGATE_DATA_DIR lets demo/seed.py and the beat tests point the dashboard at a
+# scratch copy of data/ instead of the live folder. Unset, nothing changes.
+DATA = Path(os.environ.get("AGENTGATE_DATA_DIR") or ROOT / "data")
+DB = DATA / "agentgate-v3.sqlite"
+PRINCIPALS = DATA / "principals.json"
+POLICIES_FILE = DATA / "policies.json"
+DOCS_DIR = DATA / "documents"
+DEMO_STATE = DATA / "demo_seed.json"
+# The only credential that lets an adopted rulebook change what the gateway allows.
+# Unset means the pin can never be moved: demo/swap_policy.py alone will not do it.
 RELOAD_TOKEN = os.environ.get("AGENTGATE_RELOAD_TOKEN")
 
 
 def world():
     """Fresh store handle and fresh policy read on every rerun. No caching."""
     store = Store(DB)
-    store.load_documents_from_dir(ROOT / "data" / "documents")
+    store.load_documents_from_dir(DOCS_DIR)
     policies = load_policy_set(PRINCIPALS, POLICIES_FILE)
     return store, policies
 
 
+def staged_justification() -> str:
+    """Text written in advance by demo/seed.py, so the release beat needs no typing."""
+    if not DEMO_STATE.exists():
+        return ""
+    return json.loads(DEMO_STATE.read_text(encoding="utf-8")).get("justification", "")
+
+
 state, policies = world()
 
-if "registry" not in st.session_state:
-    st.session_state["guard"] = Guard(PRINCIPALS, POLICIES_FILE, token=RELOAD_TOKEN)
-    st.session_state["registry"] = SessionRegistry(state, policies, st.session_state["guard"])
-guard: Guard = st.session_state["guard"]
-registry: SessionRegistry = st.session_state["registry"]
+# The registry and its SQLite handle live for one run only. A connection belongs to the
+# thread that opened it, and Streamlit may rerun a page on a different thread, so keeping a
+# handle in session_state can crash mid-demo. Read history is in the read_history table, not
+# in the Session object, so a fresh registry per run behaves the same.
+#
+# The guard is different: it is two paths and a hash, so it can survive reruns. With
+# AGENTGATE_PIN_RULEBOOK=1 the pin taken on the first render is kept for the whole session, and
+# a rulebook swapped between clicks is then refused under RULE-POLICY-DRIFT until an operator
+# types the reload token. Unset, every render re-pins what is on disk — the demo's "swap the
+# rulebook and watch the next click use it" stays exactly as scripted, and the guard still
+# covers any session that outlives a rerun, which is what an agent runtime does.
+PIN_RULEBOOK = os.environ.get("AGENTGATE_PIN_RULEBOOK", "") == "1"
 
-drift = guard.drift_status()
-if drift is None:
-    registry.refresh(policies)
+if PIN_RULEBOOK and "guard" in st.session_state:
+    guard: Guard = st.session_state["guard"]
+    adopted: PolicySet = st.session_state["pinned_policies"]
+else:
+    guard = Guard(PRINCIPALS, POLICIES_FILE, token=RELOAD_TOKEN)
+    adopted = policies
+    if PIN_RULEBOOK:
+        st.session_state["guard"] = guard
+        st.session_state["pinned_policies"] = adopted
+registry = SessionRegistry(state, adopted, guard)
+drift = guard.drift_status() if PIN_RULEBOOK else None
 
 st.set_page_config(page_title="AGENTGATE", layout="wide")
 st.title("AGENTGATE — permissions enforced before an AI acts")
@@ -60,7 +91,10 @@ st.caption(
 )
 st.caption(f"Live · policy fingerprint `{policies.fingerprint}` · document text is untrusted")
 
-if drift is None:
+if not PIN_RULEBOOK:
+    st.caption("Rulebook pin · off · `AGENTGATE_PIN_RULEBOOK=1` refuses a rulebook swapped "
+               "between clicks until an operator adopts it")
+elif drift is None:
     st.caption(f"Rulebook integrity · pinned `{guard.recorded}` · re-checked before every decision")
 else:
     st.error(
@@ -71,11 +105,12 @@ else:
         token = st.text_input("Operator reload token", type="password")
         if st.form_submit_button("Accept the rulebook now on disk"):
             try:
-                adopted = registry.reload_rulebook(token or None)
+                fresh = registry.reload_rulebook(token or None)
             except PermissionError as exc:
                 st.error(str(exc))
             else:
-                st.success(f"Adopted `{adopted.fingerprint}`. Reload history: {guard.reloads}")
+                st.session_state["pinned_policies"] = fresh
+                st.success(f"Adopted `{fresh.fingerprint}`. Reload history: {guard.reloads}")
                 st.rerun()
 
 left, middle, right = st.columns([1, 1.2, 1])
@@ -155,7 +190,14 @@ with middle:
                                  format_func=lambda i: f"{i} — "
                                  f"{next(a.label.classification for a in artifacts if a.id == i)}")
         target_level = st.selectbox("New classification", ["PUBLIC", "INTERNAL", "CONFIDENTIAL"])
-        justification = st.text_area("Written justification", height=70)
+        prefilled = staged_justification()
+        if prefilled and "release_justification" not in st.session_state:
+            st.session_state["release_justification"] = prefilled
+        if prefilled:
+            st.caption("Staged for this demo: the justification below was written in advance by "
+                       "demo/seed.py so this beat is click-only. In normal use the officer types it.")
+        justification = st.text_area("Written justification", height=70,
+                                     key="release_justification")
         if st.button("Release"):
             try:
                 child = declassify(state, policies, actor, target_id, target_level, justification)
@@ -177,7 +219,17 @@ with right:
         st.caption(f"{message['ts']} — {message['artifact_id']} "
                    f"[{message.get('classification', '')}] → {message['recipient']}")
     if st.button("Reset demo data"):
-        DB.unlink(missing_ok=True)
+        # Close the connection first: on Windows an open handle makes unlink raise WinError 32.
+        try:
+            state.close()
+        except Exception:
+            pass
+        for _ in range(3):
+            try:
+                DB.unlink(missing_ok=True)
+                break
+            except PermissionError:
+                time.sleep(0.2)
         st.session_state.clear()
         st.rerun()
 

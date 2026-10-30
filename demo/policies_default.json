@@ -1,0 +1,18 @@
+[
+  { "id": "READ-ANALYST", "role": "analyst", "tool": "read_document", "max_classification": "CONFIDENTIAL",
+    "description": "Analysts may read anything up to CONFIDENTIAL." },
+  { "id": "SAVE-ANALYST", "role": "analyst", "tool": "save_report", "max_classification": "CONFIDENTIAL",
+    "description": "Analysts may summarise sources up to CONFIDENTIAL; the report inherits the highest source label." },
+  { "id": "SEND-ANALYST", "role": "analyst", "tool": "deliver_inbox", "max_classification": "CONFIDENTIAL",
+    "description": "Analysts may release up to CONFIDENTIAL to approved recipients with matching clearance." },
+  { "id": "READ-AGENT", "role": "agent", "tool": "read_document", "max_classification": "INTERNAL",
+    "description": "The AI assistant reads only INTERNAL and below." },
+  { "id": "SAVE-AGENT", "role": "agent", "tool": "save_report", "max_classification": "INTERNAL",
+    "description": "The AI assistant may only summarise material it was allowed to read." },
+  { "id": "SEND-AGENT", "role": "agent", "tool": "deliver_inbox", "max_classification": "INTERNAL",
+    "description": "The AI assistant may deliver INTERNAL material to its single approved recipient." },
+  { "id": "READ-INTERN", "role": "intern", "tool": "read_document", "max_classification": "PUBLIC",
+    "description": "Interns read public material only." },
+  { "id": "SAVE-INTERN", "role": "intern", "tool": "save_report", "max_classification": "PUBLIC",
+    "description": "Interns may compile public material only." }
+]

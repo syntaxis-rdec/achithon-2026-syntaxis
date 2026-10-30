@@ -16,7 +16,18 @@ from agentgate.store import Store
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_tools_refuse_direct_calls(state):
+def test_add_steps_appends_instead_of_rewriting(state):
+    """Reported by the demo lane: a second add_steps call rewrote step 0."""
+    from agentgate import workflow
+    wf = workflow.create(state, [ActionRequest(actor_id="analyst", tool="read_document",
+                                               resource_id="doc-004")])
+    first = state.steps_for(wf)[0]
+    state.add_steps(wf, [ActionRequest(actor_id="analyst", tool="read_document",
+                                       resource_id="doc-002").model_dump()])
+    steps = state.steps_for(wf)
+    assert [s["idx"] for s in steps] == [0, 1]
+    assert steps[0]["request"] == first["request"]
+    assert steps[1]["status"] == "pending"
     with pytest.raises(PermissionError):
         tools.read_document("intern", "doc-001", state)
     with pytest.raises(PermissionError):

@@ -69,6 +69,13 @@ def fingerprint(title: str, owner: str, classification: str, body: str) -> str:
 
 
 class Store:
+    """One connection, one thread, one run.
+
+    SQLite binds a connection to the thread that opened it, so a Store must not be
+    cached across Streamlit reruns. Read history is durable in the `read_history`
+    table; nothing depends on keeping this object alive between runs.
+    """
+
     def __init__(self, path: str | Path = ":memory:"):
         self.path = str(path)
         self.conn = sqlite3.connect(self.path)
@@ -243,11 +250,16 @@ class Store:
                  "updated_at": r["updated_at"]} for r in rows]
 
     def add_steps(self, workflow_id: str, requests: list[dict]) -> None:
-        for idx, request in enumerate(requests):
+        """Append after the highest existing index, so a half-run workflow can grow later."""
+        row = self.conn.execute(
+            "SELECT COALESCE(MAX(idx) + 1, 0) FROM workflow_steps WHERE workflow_id=?",
+            (workflow_id,)).fetchone()
+        start = int(row[0])
+        for offset, request in enumerate(requests):
             self.conn.execute(
                 "INSERT OR REPLACE INTO workflow_steps(workflow_id,idx,status,request,reason,output)"
                 " VALUES (?,?,?,?,?,'')",
-                (workflow_id, idx, "pending", json.dumps(request), ""))
+                (workflow_id, start + offset, "pending", json.dumps(request), ""))
         self.conn.commit()
 
     def steps_for(self, workflow_id: str) -> list[dict]:
