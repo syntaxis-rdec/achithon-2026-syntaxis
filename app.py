@@ -1,9 +1,11 @@
 """AGENTGATE demo dashboard.
 
 Every tool call goes through a Session held in a registry, so read history survives
-clicks. Policy files are re-read on every run. Declassification is a separate store
-action, not a tool, and the page says so. Workflows store proposals only; the Resume
-button re-reads the rulebook from disk and re-decides every step that is not done.
+clicks. Policy files are re-read on every run, but a guarded registry only adopts a
+rulebook whose bytes still match the pin taken at load; a mid-session swap is denied
+under RULE-POLICY-DRIFT until an operator reloads with the token. Declassification is a
+separate store action, not a tool, and the page says so. Workflows store proposals only;
+the Resume button re-reads the rulebook from disk and re-decides every step that is done.
 """
 
 from __future__ import annotations
@@ -18,8 +20,9 @@ import streamlit as st
 
 from agentgate import tools, workflow
 from agentgate.gateway import declassify
-from agentgate.models import ActionRequest
+from agentgate.models import ActionRequest, PolicySet
 from agentgate.policy import load_policy_set
+from agentgate.policy_guard import Guard
 from agentgate.sessions import SessionRegistry
 from agentgate.store import Store
 
@@ -32,6 +35,9 @@ PRINCIPALS = DATA / "principals.json"
 POLICIES_FILE = DATA / "policies.json"
 DOCS_DIR = DATA / "documents"
 DEMO_STATE = DATA / "demo_seed.json"
+# The only credential that lets an adopted rulebook change what the gateway allows.
+# Unset means the pin can never be moved: demo/swap_policy.py alone will not do it.
+RELOAD_TOKEN = os.environ.get("AGENTGATE_RELOAD_TOKEN")
 
 
 def world():
@@ -55,7 +61,26 @@ state, policies = world()
 # thread that opened it, and Streamlit may rerun a page on a different thread, so keeping a
 # handle in session_state can crash mid-demo. Read history is in the read_history table, not
 # in the Session object, so a fresh registry per run behaves the same.
-registry = SessionRegistry(state, policies)
+#
+# The guard is different: it is two paths and a hash, so it can survive reruns. With
+# AGENTGATE_PIN_RULEBOOK=1 the pin taken on the first render is kept for the whole session, and
+# a rulebook swapped between clicks is then refused under RULE-POLICY-DRIFT until an operator
+# types the reload token. Unset, every render re-pins what is on disk — the demo's "swap the
+# rulebook and watch the next click use it" stays exactly as scripted, and the guard still
+# covers any session that outlives a rerun, which is what an agent runtime does.
+PIN_RULEBOOK = os.environ.get("AGENTGATE_PIN_RULEBOOK", "") == "1"
+
+if PIN_RULEBOOK and "guard" in st.session_state:
+    guard: Guard = st.session_state["guard"]
+    adopted: PolicySet = st.session_state["pinned_policies"]
+else:
+    guard = Guard(PRINCIPALS, POLICIES_FILE, token=RELOAD_TOKEN)
+    adopted = policies
+    if PIN_RULEBOOK:
+        st.session_state["guard"] = guard
+        st.session_state["pinned_policies"] = adopted
+registry = SessionRegistry(state, adopted, guard)
+drift = guard.drift_status() if PIN_RULEBOOK else None
 
 st.set_page_config(page_title="AGENTGATE", layout="wide")
 st.title("AGENTGATE — permissions enforced before an AI acts")
@@ -65,6 +90,28 @@ st.caption(
     "labels travel with every derived report."
 )
 st.caption(f"Live · policy fingerprint `{policies.fingerprint}` · document text is untrusted")
+
+if not PIN_RULEBOOK:
+    st.caption("Rulebook pin · off · `AGENTGATE_PIN_RULEBOOK=1` refuses a rulebook swapped "
+               "between clicks until an operator adopts it")
+elif drift is None:
+    st.caption(f"Rulebook integrity · pinned `{guard.recorded}` · re-checked before every decision")
+else:
+    st.error(
+        f"Rulebook drift · pinned `{drift.expected}`, on disk `{drift.found}`. Every action is "
+        "denied under `RULE-POLICY-DRIFT` and audited until an operator reloads."
+    )
+    with st.form("reload_rulebook"):
+        token = st.text_input("Operator reload token", type="password")
+        if st.form_submit_button("Accept the rulebook now on disk"):
+            try:
+                fresh = registry.reload_rulebook(token or None)
+            except PermissionError as exc:
+                st.error(str(exc))
+            else:
+                st.session_state["pinned_policies"] = fresh
+                st.success(f"Adopted `{fresh.fingerprint}`. Reload history: {guard.reloads}")
+                st.rerun()
 
 left, middle, right = st.columns([1, 1.2, 1])
 
@@ -287,8 +334,12 @@ with viewer:
                            "Why": step["reason"][:110] or "not attempted yet"}
                           for step in steps]),
             hide_index=True, height=160)
-        st.caption(f"Rulebook on disk right now: `{policies.fingerprint}`")
-        if st.button("Resume", key="wf_resume"):
+        st.caption(f"Rulebook on disk right now: `{policies.fingerprint}` · "
+                   f"pinned `{guard.recorded}`")
+        if drift is not None:
+            st.warning("Resume is closed while the rulebook on disk differs from the pin. "
+                       "Reload with the operator token first.")
+        if st.button("Resume", key="wf_resume", disabled=drift is not None):
             st.session_state["wf_report"] = workflow.resume(state, chosen, PRINCIPALS,
                                                             POLICIES_FILE)
             st.rerun()

@@ -119,3 +119,45 @@ Merged into `main` at `dbb97b6` by Tanush. All four lane commits are on `main`:
 Follow-ups awaiting a merge (both docs-only or lane-only, no core file touched):
 `de83503` — merge status and the stale test counts; `9d65bb6` — the substituted-text property and
 the two committed mutation checks, which take the pack from 25 to 33 tests.
+
+---
+
+# Task 2 — policy integrity guard and red-team harness
+
+Full write-up: `team/makhdum/REPORT-2.md`. Short version: the rulebook is now pinned at load, a
+mid-session swap is denied under `RULE-POLICY-DRIFT` and audited, adoption needs the operator token
+and is audited either way, and 21 named attacks run against a copied world.
+
+Two attacks are kept failing as live findings rather than softened: `workflow.resume` builds a
+guardless session and honours an unadopted rulebook (LF-1), and a document minted after the pin is
+trusted on sight (LF-2). Both are `xfail(strict)` in `tests/test_redteam.py`.
+
+## Requests (task 2)
+
+- **`agentgate/workflow.py` — needs one parameter.** `resume(state, workflow_id, principals_path,
+  policies_path, guard=None)` and pass it to the `Session` it constructs at `workflow.py:77`.
+  Without it the resume path decides against disk bytes nobody adopted, which is LF-1. `app.py` will
+  hand it the registry's guard as soon as the signature allows it. Not in my allowed edit list.
+- **`docs/DEMO_SCRIPT.md` / `docs/DEMO_RUNSHEET.md` — one sentence each.** Under
+  `AGENTGATE_PIN_RULEBOOK=1` the presenter must type the reload token after
+  `python demo/swap_policy.py tighten`; in the default mode nothing changes. The script currently
+  promises the swap lands on the next click, which is only true unpinned.
+- **`docs/RUN.md`** — the dashboard now reads two env vars: `AGENTGATE_RELOAD_TOKEN` (unset means
+  the pin can never be moved) and `AGENTGATE_PIN_RULEBOOK`. Neither is documented.
+- `benchmark/` — a drift scenario would make the evidence table cover the guard. The benchmark runs
+  guardless by design, so 32/32 says nothing about drift.
+- `README.md:43` still says `pytest # 42 tests`. It is 123 passing with 2 strict xfails now.
+
+## Ready to merge (task 2)
+
+- Commits `043f262` (guard + gateway), `088c85f` (dashboard gate), `d86ee28` (adopt/refuse audit
+  trail + unit tests), `c035d48` (harness), `8789fcd` (report), `0e97818` (merge of main, app.py and
+  log.txt conflicts resolved), `dfc3cd0` (pinned-dashboard test and the merge decision write-up).
+  Any commit after `dfc3cd0` on this branch is notes-only.
+- `pytest` — **123 passed, 2 xfailed**. Every test that existed before this lane is green with its
+  expectations unedited, including the 499 lines of `tests/test_demo_beats.py` merged from main.
+- `python -m benchmark.runner` — 32/32, 0 unauthorized, 0 false allows, 0 false denies.
+  `benchmark.mutations` — all six detected. `benchmark/` and `agentgate/store.py` schema untouched.
+- Task 2's own done-means, item by item: attack 12 denies with `RULE-POLICY-DRIFT` and audits; the
+  harness has 21 named attacks; the pin moves only through `reload_rulebook(token)`; every turn is
+  in `log.txt`.
