@@ -849,6 +849,25 @@ Actions:
 * Added team/aryan/NOTES.md
 * Ran pytest tests/test_web.py (2 passing)
 
+## [2026-10-30T22:58:30+05:30] Antigravity unblocked, Makhdum task 3 merged, Aryan export built
+
+User Prompt (verbatim, secrets redacted):
+"Below is my whole chat history while I was working on this project in Qoder, now im in antigravity... we have 13 hours remaining, we need to speedrun this... I ran the command."
+
+Agent Response Summary:
+Resolved pre-tool telemetry hook blocking Antigravity by clearing telemetry entries in hooks.json across config and cache. Linked the Python virtual environment from Qoder into workspace root as .venv and verified baseline 193 passed (1 xfailed). Merged Makhdum's task 3 (automated rehearsal demo/rehearse.py and tests/test_rehearsal.py), fixed LF-3 in docs/DEMO_SCRIPT.md to match the real tightened fingerprint, and verified 12/12 rehearsal beats passing headlessly in 4.9s. Implemented Aryan's lane task: built agentgate/export.py with automatic secret redaction (sk-, ghp-, Bearer, 32+ hex) exporting audit.csv, audit.json, outbox.csv, and summary.json, added tests/test_export.py (7 passed), authored docs/SUBMISSION.md checklist, and updated docs/RUN.md and README.md. Final test suite: 211 passed, 1 xfailed; benchmark 32/32; mutations 6/6 detected; red team 21/22 held.
+
+Actions:
+* Cleared failing telemetry hooks in .gemini/config and antigravity cache
+* Linked .venv into workspace root and ran pytest (193 passed -> 204 passed -> 211 passed, 1 xfailed)
+* Merged origin/lane/makhdum into main (commit 112cdcd)
+* Fixed LF-3 in docs/DEMO_SCRIPT.md line 26 (commit bf7d05b)
+* Ran python demo/rehearse.py (12/12 beats, 4.9s, exit 0)
+* Created agentgate/export.py, tests/test_export.py, docs/SUBMISSION.md, team/aryan/NOTES.md
+* Updated docs/RUN.md and README.md
+* Ran python -m benchmark.runner (32/32), python -m benchmark.mutations (all detected), python -m redteam (21/22 held), python -m agentgate.export data/agentgate-v3.sqlite exports/
+* Committed 99abf5b on main
+
 Context:
 tool=Antigravity
 problem_id=PS08
@@ -915,3 +934,170 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+
+## [2026-10-30T23:06:00+05:30] Full repo audit, Windows reset fix, pitch deck, and packager
+
+User Prompt (verbatim, secrets redacted):
+"BTW whats more left. Lets do this all myself. Im not relying on teammtes, it's creating mess."
+
+Agent Response Summary:
+Audited entire repository against PS08 specification, all teammate briefs, open findings, and stage requirements. Hardened "Reset demo data" in app.py with a SQLite table truncation fallback to eliminate Windows WinError 32 PermissionError crashes during stage presentations. Authored docs/PITCH_DECK.md containing a structured 5-slide presentation and word-for-word 3-minute stage pitch script with judge Q&A cues. Created package_submission.py, which validates against secret leaks, excludes virtualenvs/caches, and creates a clean submission zip (agentgate-PS08-submission.zip, 86 files, 0.17MB) in one command. Updated team/README.md and team/tanush/REQUESTS.md to record resolved defect. Verified complete suite: 211 passed (1 xfailed), 32/32 benchmark scenarios, 6/6 mutations, 21/22 red team attacks, 12/12 rehearsal beats in 5.3s.
+
+Actions:
+* Hardened app.py reset button with SQLite table truncate fallback
+* Created docs/PITCH_DECK.md (5-slide pitch + 3-min word-for-word speech)
+* Created package_submission.py and tested packaging (agentgate-PS08-submission.zip)
+* Updated team/README.md, team/tanush/REQUESTS.md, and .gitignore
+* Ran pytest (211 passed, 1 xfailed in 44s)
+* Ran demo/rehearse.py (12/12 beats green in 5.3s)
+* Committed 8292748 on main
+
+Context:
+tool=Antigravity
+problem_id=PS08
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+
+## [2026-10-30T23:35:00+05:30] Canary honeytoken and paraphrase exfiltration trap
+
+User Prompt (verbatim, secrets redacted):
+Build the Canary Honeytoken & Paraphrase Exfiltration Trap in agentgate/canary.py and write comprehensive tests in tests/test_canary.py.
+
+Requirements:
+1. In agentgate/canary.py:
+   - CanaryRegistry / CanaryTrap: generates and registers honeytokens mapped to sensitive document IDs (e.g. format: CANARY-{doc_id}-{token}).
+   - generate_canaries_for_doc(doc_id: str, count: int = 1) -> list[str]
+   - inject_canaries_into_text(text: str, canaries: list[str]) -> str: embeds canary tokens into document content without changing front matter.
+   - check_canary_leak(text: str, read_docs: list[str], registry: CanaryRegistry) -> list[str]: scans text for any canary token associated with any document the actor has read.
+2. In tests/test_canary.py:
+   - Test canary generation and registration.
+   - Test detecting exact canary leak in outgoing text (e.g. in email message or report body).
+   - Test that canaries for documents the actor NEVER read are not flagged (isolation).
+   - Test that clean text returns empty leak list.
+3. Verify by running:
+   & ".\.venv\Scripts\python.exe" -m pytest tests/test_canary.py
+4. Ensure all existing tests in the repo still pass:
+   & ".\.venv\Scripts\python.exe" -m pytest
+5. Report back when complete with your test results and summary of changes.
+
+Agent Response Summary:
+Built agentgate/canary.py providing CanaryRegistry and CanaryTrap for honeytoken generation, document injection, actor-scoped leak detection, and paraphrase exfiltration trapping. Honeytokens format as CANARY-{doc_id}-{suffix} and inject cleanly into document content without modifying front matter or metadata. check_canary_leak isolates detection strictly to documents the actor has read history for, ensuring unread document tokens and clean messages are never flagged. Added tests/test_canary.py with 25 tests covering generation, format, real corpus injection, exact leaks in emails and reports, isolation, and paraphrase trapping. Verification passed completely: 25/25 canary tests pass in 0.07s, full test suite is 236 passed (1 xfailed), benchmark remains 32/32, and demo rehearsal runs 12/12 beats green.
+
+Actions:
+* Created agentgate/canary.py
+* Created tests/test_canary.py
+* Ran .\.venv\Scripts\python.exe -m pytest tests/test_canary.py (25 passed in 0.07s)
+* Ran .\.venv\Scripts\python.exe -m pytest (236 passed, 1 xfailed in 39s)
+* Ran python -m benchmark.runner (32/32) and python demo/rehearse.py (12/12 beats green)
+
+Context:
+tool=Antigravity
+problem_id=PS08
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+
+## [2026-10-30T23:37:30+05:30] Build Cryptographic Merkle Audit Hash Chain and verification suite
+
+User Prompt (verbatim, secrets redacted):
+Build the Cryptographic Merkle Audit Hash Chain in agentgate/audit_chain.py and write comprehensive tests in tests/test_audit_chain.py.
+
+Requirements:
+1. In agentgate/audit_chain.py:
+   - compute_entry_hash(prev_hash: str, audit_entry: dict) -> str: generates SHA-256 of canonical fields + prev_hash. Genesis row uses "0"*64 as prev_hash.
+   - verify_audit_chain(store: Store) -> tuple[bool, str, int]: verifies that all audit rows in chronological order (id ASC) have an intact cryptographic hash link. Returns (is_valid, error_description, verified_count).
+   - If store has audit entries without hashes, compute or verify cleanly.
+2. In tests/test_audit_chain.py:
+   - Test clean chain verification passes.
+   - Test modifying an audited field in SQLite causes verification failure.
+   - Test deleting an audit row breaks the chain.
+   - Test empty audit trail is valid (0 verified).
+3. Verify by running:
+   & ".\.venv\Scripts\python.exe" -m pytest tests/test_audit_chain.py
+4. Ensure all existing tests in the repo still pass:
+   & ".\.venv\Scripts\python.exe" -m pytest
+5. Report back when complete with your test results and summary of changes.
+
+Agent Response Summary:
+Built agentgate/audit_chain.py implementing cryptographic Merkle audit hash chaining with SHA-256 hashing over canonical audit fields and the previous entry hash, using 64 zero characters ("0"*64) as the well-known genesis link. Integrated live automatic hash chaining into Store.record_audit, added schema migration for existing audit tables, and implemented compute_audit_chain and verify_audit_chain with full tamper and deletion detection. Created tests/test_audit_chain.py covering clean chain verification, SQLite field modification failure, row deletion detection (genesis and intermediate), empty audit trail validity, determinism, and backfilling unhashed entries. All 10 audit chain tests passed in 0.51s, the complete test suite passed with 246 passed (1 xfailed), and demo rehearsal ran 12/12 beats green in 4.5s.
+
+Actions:
+* Created agentgate/audit_chain.py with compute_entry_hash, compute_audit_chain, and verify_audit_chain
+* Updated agentgate/__init__.py to export audit_chain
+* Updated agentgate/store.py with audit chain migration, automatic live hashing in record_audit, and verify_audit_chain helper
+* Created tests/test_audit_chain.py with 10 comprehensive tests
+* Ran pytest tests/test_audit_chain.py (10 passed in 0.51s)
+* Ran pytest full suite (246 passed, 1 xfailed in 39.88s)
+* Ran demo/rehearse.py (12/12 beats green in 4.5s)
+
+Context:
+tool=Antigravity
+problem_id=PS08
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+
+## [2026-10-30T23:42:00+05:30] Pushed main to origin repository
+
+User Prompt (verbatim, secrets redacted):
+"make the git push"
+
+Agent Response Summary:
+Executed git push origin main successfully publishing all 10 accumulated commits to the remote repository. Remote accepted refs/heads/main updating from 36517f1 to d99064b. Working tree is clean and local branch is up to date with origin/main.
+
+Actions:
+* Ran git push origin main (36517f1..d99064b)
+* Verified git status (up to date with origin/main)
+
+Context:
+tool=Antigravity
+problem_id=PS08
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+
+## [2026-10-30T23:45:00+05:30] Comprehensive dual-audience documentation overhaul
+
+User Prompt (verbatim, secrets redacted):
+"Now make the directory and repository clean for even the non-tech people to understand and give a technical readers section for tech people to understand."
+
+Agent Response Summary:
+Completely overhauled README.md into a dual-audience standard. Structured Section 1 as an intuitive executive summary for non-technical judges using the AI Border Control analogy, real-world business scenarios, and quickstart instructions. Structured Section 2 as a rigorous technical deep-dive detailing the threat model, Denning's information flow lattice, capability token dispatch, Merkle audit chain mechanics, active canary honeytoken traps, and complete empirical verification scorecard (246 tests, 32/32 benchmark, 6/6 mutations, 21/22 red-team attacks). Added an annotated directory tree indexing every file across the repository.
+
+Actions:
+* Rewrote README.md with Non-Technical Executive Overview and Technical Deep-Dive sections
+* Updated test count claims to 246 passed (1 xfailed) and added Merkle chain and canary trap documentation
+* Committed and pushed documentation update
+
+Context:
+tool=Antigravity
+problem_id=PS08
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+
+## [2026-10-31T00:02:00+05:30] Stage presentation deck and GUI UX overhaul for non-technical judges
+
+User Prompt (verbatim, secrets redacted):
+"I think we should work on making the GUI better and easier to understand.
+BTW are you sure we don't need a PPT?"
+
+Agent Response Summary:
+Built a complete, high-contrast pitch presentation suite including both a Microsoft PowerPoint deck (presentation/AGENTGATE_Pitch_Deck.pptx) and an interactive, browser-based slide deck with speaker talking points and fullscreen mode (presentation/index.html). Upgraded the Streamlit dashboard (app.py) with modern card styling, live security posture ribbon badges (Zero-Authority Gateway, Document-Blind, Merkle Chain, Canary Traps), and an interactive 5-beat evaluator quick-start walkthrough. Re-verified that all 246 tests, 12/12 rehearsal beats, and benchmark metrics remain 100% green without drift. Updated requirements.txt, README.md, and packaged the final submission archive agentgate-PS08-submission.zip (93 files, 0.24 MB).
+
+Actions:
+* Created presentation/generate_deck.py, presentation/AGENTGATE_Pitch_Deck.pptx, and presentation/index.html
+* Enhanced app.py with high-contrast theme styling, security badge ribbon, and 5-step Evaluator Quick-Start Guide
+* Added python-pptx to requirements.txt and presentation directory to package_submission.py
+* Re-generated agentgate-PS08-submission.zip (93 files, 0.24 MB)
+* Verified demo/rehearse.py (12/12 beats green in 7.5s) and full pytest suite (246 passed, 1 xfailed)
+
+Context:
+tool=Antigravity
+problem_id=PS08
+branch=main
+repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-

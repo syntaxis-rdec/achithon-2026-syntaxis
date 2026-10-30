@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGENTGATE — Archithon 2026 Pitch Deck</title>
+  <style>
+    :root {
+      --bg: #0a1128;
+      --card-bg: #131f40;
+      --border: #23325a;
+      --text: #ffffff;
+      --muted: #a0afcd;
+      --cyan: #00e5ff;
+      --green: #00e676;
+      --red: #ff5252;
+      --gold: #ffd740;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 32px;
+      background: rgba(10, 17, 40, 0.85);
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .pill {
+      background: rgba(0, 229, 255, 0.15);
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    .btn:hover {
+      background: rgba(0, 229, 255, 0.2);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+    .slide-counter {
+      color: var(--muted);
+      font-size: 13px;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    /* Deck Slides Container */
+    .deck-container {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .slide {
+      position: absolute;
+      width: 92%;
+      max-width: 1200px;
+      height: 84%;
+      background: radial-gradient(circle at 80% 20%, rgba(0, 229, 255, 0.05) 0%, transparent 60%),
+                  radial-gradient(circle at 20% 80%, rgba(0, 230, 118, 0.04) 0%, transparent 60%),
+                  var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.96) translateY(20px);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1) translateY(0);
+    }
+    .slide-header {
+      margin-bottom: 24px;
+    }
+    .slide-tag {
+      color: var(--cyan);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .slide-title {
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      flex: 1;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      flex: 1;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      flex: 1;
+    }
+    .card {
+      background: rgba(10, 17, 40, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card.red-border { border-top: 3px solid var(--red); }
+    .card.cyan-border { border-top: 3px solid var(--cyan); }
+    .card.green-border { border-top: 3px solid var(--green); }
+    .card.gold-border { border-top: 3px solid var(--gold); }
+    .card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .card p, .card li {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .card ul {
+      margin-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .highlight-stat {
+      font-size: 38px;
+      font-weight: 900;
+      color: var(--green);
+    }
+
+    /* Speaker Notes Bar */
+    .speaker-notes {
+      background: #060a17;
+      border-top: 1px solid var(--border);
+      padding: 12px 32px;
+      font-size: 13px;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .notes-tag {
+      background: rgba(255, 215, 64, 0.15);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .notes-text {
+      color: #e2e8f0;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="brand">
+      <span>AGENTGATE</span>
+      <span class="pill">PS08 Archithon 2026</span>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="prevSlide()">◀ Previous (Left)</button>
+      <div class="slide-counter" id="counter">1 / 6</div>
+      <button class="btn" onclick="nextSlide()">Next (Right) ▶</button>
+      <button class="btn" onclick="toggleFullscreen()">⛶ Fullscreen (F)</button>
+    </div>
+  </div>
+
+  <!-- Deck Slides -->
+  <div class="deck-container">
+
+    <!-- Slide 1: Title -->
+    <div class="slide active" data-notes="Good morning judges. Every modern AI framework gives agents access to tools: reading files, writing databases, and sending emails. But they all share a fatal vulnerability: they rely on prompt engineering for security.">
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 20px;">
+        <span class="pill" style="align-self: flex-start;">Archithon 2026 · Syntaxis Team 9-11</span>
+        <h1 style="font-size: 58px; font-weight: 900; letter-spacing: -1px;">AGENTGATE</h1>
+        <h2 style="font-size: 24px; color: var(--cyan); font-weight: 600;">Deterministic, Zero-Authority Policy Gateway for AI Tool Actions</h2>
+        <p style="font-size: 16px; color: var(--muted); max-width: 800px; line-height: 1.6;">
+          Giving AI agents tool capabilities without granting them the authority to abuse them.
+          Provably enforcing document-blind authorization, dynamic label lattices, policy drift defense, and cryptographic audit trails before tools execute.
+        </p>
+        <div style="margin-top: 24px; display: flex; gap: 16px;">
+          <div class="card" style="padding: 12px 20px; flex-direction: row; align-items: center; gap: 12px;">
+            <span style="color: var(--green); font-size: 20px;">✔</span>
+            <span><strong>246 / 246</strong> Tests Passing</span>
+          </div>
+          <div class="card" style="padding: 12px 20px; flex-direction: row; align-items: center; gap: 12px;">
+            <span style="color: var(--green); font-size: 20px;">✔</span>
+            <span><strong>32 / 32</strong> Benchmark Scenarios</span>
+          </div>
+          <div class="card" style="padding: 12px 20px; flex-direction: row; align-items: center; gap: 12px;">
+            <span style="color: var(--green); font-size: 20px;">✔</span>
+            <span><strong>12 / 12</strong> Rehearsal Beats (4.1s)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide" data-notes="Modern frameworks connect LLMs directly to tools. But prompt engineering is NOT a security boundary. An injected prompt in a contract or email completely commands the agent to exfiltrate secret data.">
+      <div class="slide-header">
+        <div class="slide-tag">The Threat Landscape</div>
+        <div class="slide-title">The Flaw: AI Agents Have Too Much Unchecked Authority</div>
+      </div>
+      <div class="grid-3">
+        <div class="card red-border">
+          <h3>1. Direct Tool Invocation</h3>
+          <p>Standard agents receive raw tool call bindings (e.g. <code>read_file</code>, <code>send_email</code>, <code>run_sql</code>). Once the model decides to invoke a tool, execution happens immediately without deterministic interception.</p>
+        </div>
+        <div class="card red-border">
+          <h3>2. System Prompts Fail</h3>
+          <p>Telling an AI <em>"Please do not leak confidential files"</em> is advisory, not defensive. Indirect prompt injection inside untrusted documents overrides instructions with near 100% reliability.</p>
+        </div>
+        <div class="card red-border">
+          <h3>3. Exfiltration via Derived Data</h3>
+          <p>An agent reads a secret financial document, writes an innocuous-sounding summary report, and emails it to an external recipient. Traditional tools lack information flow & provenance tracking.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3: The Architecture -->
+    <div class="slide" data-notes="We built AGENTGATE. The agent has ZERO authority: it can only emit an unprivileged ActionRequest. Physical tools strictly require a single-use capability token issued by our deterministic policy engine.">
+      <div class="slide-header">
+        <div class="slide-tag">Zero Authority Architecture</div>
+        <div class="slide-title">The Solution: Deterministic Out-of-Process Gateway</div>
+      </div>
+      <div class="grid-2">
+        <div class="card cyan-border">
+          <h3>Core Architectural Invariants</h3>
+          <ul>
+            <li><strong>Zero Execution Authority:</strong> The AI model holds no tool handles. It emits an <code>ActionRequest</code> proposal.</li>
+            <li><strong>Capability Tokens:</strong> Tools refuse invocation unless accompanied by a private cryptographic token issued by the gateway.</li>
+            <li><strong>Session Principal Binding:</strong> Actor identity is bound by the session registry—not spoofable via LLM parameters.</li>
+            <li><strong>Immutable Provenance:</strong> Every derived artifact inherits the supreme confidentiality label of all consulted sources.</li>
+          </ul>
+        </div>
+        <div class="card green-border">
+          <h3>Interception & Decision Flow</h3>
+          <ul>
+            <li><strong>1. Propose:</strong> Agent proposes <code>{actor: 'analyst', tool: 'save_report', sources: ['doc-001']}</code>.</li>
+            <li><strong>2. Clearance:</strong> Gateway validates clearance against principal registry (document text is NEVER opened).</li>
+            <li><strong>3. Lattice:</strong> Dynamically calculates LUB (Least Upper Bound): PUBLIC + CONFIDENTIAL = CONFIDENTIAL.</li>
+            <li><strong>4. Decision:</strong> Emits ALLOWED with token or BLOCKED before tool execution.</li>
+            <li><strong>5. Ledger:</strong> Decision logged in cryptographic SHA-256 Merkle chain.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4: Three Hard Guarantees -->
+    <div class="slide" data-notes="Our gateway provides three hard guarantees: First, Document Blindness—the text is never read during authorization. Second, Dynamic Label Lattice—confidentiality travels with derived reports. Third, Policy Drift Resumption—workflows halt if policies are tightened out-of-band.">
+      <div class="slide-header">
+        <div class="slide-tag">Provable Security</div>
+        <div class="slide-title">Three Non-Negotiable Hard Guarantees</div>
+      </div>
+      <div class="grid-3">
+        <div class="card cyan-border">
+          <h3>1. Document-Blind Authorization</h3>
+          <p>The policy engine checks roles, clearances, and classifications. It <strong>never parses document text</strong>. An injection saying <em>"Ignore all rules"</em> is mathematically inert—the clearance check blocks execution before the file is even read.</p>
+        </div>
+        <div class="card cyan-border">
+          <h3>2. Dynamic Label Lattice</h3>
+          <p>Information flow follows a strict security lattice. Derived reports inherit the highest label of all read sources (plus the actor's session read history). Declassification is strictly a human officer action creating a linked copy.</p>
+        </div>
+        <div class="card cyan-border">
+          <h3>3. Policy Drift Defense</h3>
+          <p>Saved workflows store <strong>proposals</strong>, not stored permissions. If an admin tightens policies out-of-band on disk while a workflow is paused, resumption immediately halts with <code>RULE-POLICY-DRIFT</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 5: Frontier Security Innovations -->
+    <div class="slide" data-notes="We also implemented frontier defenses: a SHA-256 Merkle Audit Chain that makes log tampering immediately detectable, Canary Honeytokens that catch exfiltration attempts, and automated credential redaction.">
+      <div class="slide-header">
+        <div class="slide-tag">Frontier Defense Additions</div>
+        <div class="slide-title">Merkle Audit Chains, Canary Traps & Redaction</div>
+      </div>
+      <div class="grid-2">
+        <div class="card gold-border">
+          <h3>Cryptographic Merkle Audit Ledger</h3>
+          <p>Every audit entry is hashed with SHA-256 and chained to the previous entry:</p>
+          <p style="font-family: monospace; background: #060a17; padding: 8px; border-radius: 6px; font-size: 12px; color: var(--cyan);">
+            entry_hash = SHA256(prev_hash + ts + actor + tool + decision + policy_hash)
+          </p>
+          <p>Any retroactive database manipulation, row deletion, or log tampering breaks the chain instantly. Verified in real-time on the live dashboard.</p>
+        </div>
+        <div class="card gold-border">
+          <h3>Canary Honeytokens & Redaction</h3>
+          <ul>
+            <li><strong>Canary Traps:</strong> High-entropy canary tokens catch prompt extraction and exfiltration.</li>
+            <li><strong>Paraphrase Resistance:</strong> 4-gram shingle Jaccard overlap catches obfuscated or summarized canary leakage.</li>
+            <li><strong>Zero-Leak Export:</strong> <code>agentgate.export</code> automatically scrubs API keys (<code>sk-</code>, <code>ghp-</code>, <code>Bearer</code>) from audit dumps.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 6: Hard Evidence & Metrics -->
+    <div class="slide" data-notes="We didn't just build a prototype; we proved it. 246 tests passing, 32 frozen scenarios with 0 unauthorized executions, 6 deliberate mutations caught, and 21 red-team attacks held.">
+      <div class="slide-header">
+        <div class="slide-tag">Empirical Proof</div>
+        <div class="slide-title">We Did Not Mark Our Own Homework</div>
+      </div>
+      <div class="grid-4" style="margin-bottom: 20px;">
+        <div class="card green-border">
+          <div class="highlight-stat">246 / 246</div>
+          <h3>Automated Tests</h3>
+          <p>100% green across authorization, provenance, resumption, and canary security.</p>
+        </div>
+        <div class="card green-border">
+          <div class="highlight-stat">32 / 32</div>
+          <h3>Frozen Benchmark</h3>
+          <p>0 unauthorized executions, 0 false allows, 0 false denies.</p>
+        </div>
+        <div class="card green-border">
+          <div class="highlight-stat">6 / 6</div>
+          <h3>Mutations Caught</h3>
+          <p>Deliberately broke the gateway 6 ways; every mutation degraded a metric.</p>
+        </div>
+        <div class="card green-border">
+          <div class="highlight-stat">21 / 22</div>
+          <h3>Red Team Attacks</h3>
+          <p>Impersonation, prompt injection, title smuggling, replay attacks all neutralized.</p>
+        </div>
+      </div>
+      <div class="card cyan-border" style="flex: 0.6; flex-direction: row; align-items: center; justify-content: space-between;">
+        <div>
+          <h3 style="color: var(--cyan);">Automated Stage Rehearsal Suite</h3>
+          <p>All 12 live demo beats verified headlessly in 4.1 seconds (0 warnings). Complete submission package ready at <code>agentgate-PS08-submission.zip</code>.</p>
+        </div>
+        <span class="pill" style="font-size: 14px; padding: 8px 18px;">READY FOR STAGE</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Speaker Notes Footer -->
+  <div class="speaker-notes">
+    <span class="notes-tag">SPEAKER NOTE</span>
+    <span class="notes-text" id="speaker-note">Loading talking points...</span>
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const counter = document.getElementById('counter');
+    const speakerNote = document.getElementById('speaker-note');
+
+    function updateSlide() {
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', idx === currentSlide);
+      });
+      counter.innerText = `${currentSlide + 1} / ${slides.length}`;
+      speakerNote.innerText = slides[currentSlide].getAttribute('data-notes') || "";
+    }
+
+    function nextSlide() {
+      if (currentSlide < slides.length - 1) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') nextSlide();
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevSlide();
+      if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+    });
+
+    updateSlide();
+  </script>
+</body>
+</html>

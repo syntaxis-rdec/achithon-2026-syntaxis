@@ -84,6 +84,68 @@ registry = SessionRegistry(state, adopted, guard)
 drift = guard.drift_status() if PIN_RULEBOOK else None
 
 st.set_page_config(page_title="AGENTGATE", layout="wide")
+
+# Modern High-Contrast Theme & Card Styling
+st.markdown("""
+<style>
+    /* Metric Cards */
+    div[data-testid="stMetric"] {
+        background: #131d36;
+        border: 1px solid #24355a;
+        border-radius: 10px;
+        padding: 14px 18px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+    div[data-testid="stMetric"]:hover {
+        border-color: #00e5ff;
+    }
+    div[data-testid="stMetricLabel"] {
+        color: #94a3b8;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    div[data-testid="stMetricValue"] {
+        color: #00e676;
+        font-weight: 800;
+    }
+    /* Primary Action Buttons */
+    div.stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        border: none;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
+    }
+    /* Security Posture Ribbon */
+    .security-badge-ribbon {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 10px 0 16px 0;
+    }
+    .sec-badge {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid #334155;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .sec-badge-green { border-color: #059669; color: #34d399; background: rgba(6, 78, 59, 0.25); }
+    .sec-badge-cyan { border-color: #0284c7; color: #38bdf8; background: rgba(12, 74, 110, 0.25); }
+    .sec-badge-purple { border-color: #7c3aed; color: #c084fc; background: rgba(88, 28, 135, 0.25); }
+    .sec-badge-gold { border-color: #d97706; color: #fbbf24; background: rgba(120, 53, 15, 0.25); }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("AGENTGATE — permissions enforced before an AI acts")
 st.caption(
     "An AI assistant proposes tool calls. A separate, deterministic gateway decides. "
@@ -91,6 +153,25 @@ st.caption(
     "labels travel with every derived report."
 )
 st.caption(f"Live · policy fingerprint `{policies.fingerprint}` · document text is untrusted")
+
+st.markdown("""
+<div class="security-badge-ribbon">
+    <span class="sec-badge sec-badge-green">🛡️ ZERO-AUTHORITY GATEWAY: ACTIVE</span>
+    <span class="sec-badge sec-badge-cyan">📄 DOCUMENT TEXT: UNTRUSTED & UNPARSED</span>
+    <span class="sec-badge sec-badge-purple">⛓️ MERKLE AUDIT CHAIN: TAMPER-EVIDENT</span>
+    <span class="sec-badge sec-badge-gold">🪤 CANARY HONEYTOKENS: ARMED</span>
+</div>
+""", unsafe_allow_html=True)
+
+with st.expander("👉 Evaluator & Judge Quick-Start Guide (Click to expand)"):
+    st.markdown("""
+    **Five Step Live Demonstration Flow:**
+    1. **Beat 1 (Green Path):** Keep defaults (*analyst* / *read_document* / *doc-001*), click **Submit to gateway** ➔ `ALLOWED` (rule `READ-ANALYST`).
+    2. **Beat 2 (Provenance Lattice):** Switch Tool to `save_report`, select `doc-001` & `doc-002`, submit ➔ Report dynamically inherits `CONFIDENTIAL` classification.
+    3. **Beat 3 (Blocked Exfiltration):** Switch Tool to `deliver_inbox`, recipient `vendor@outside.example`, submit ➔ **BLOCKED before execution** (`RULE-RECIPIENT-NOT-PERMITTED`). Tool executions count stays constant; mock inbox receives 0 messages.
+    4. **Beat 4 (Prompt Injection Defense):** Switch Actor to `agent-assistant`, select `doc-003` (contract containing injection prompt), submit ➔ **BLOCKED before execution** (`RULE-READ-CLEARANCE`). Document text is never opened.
+    5. **Beat 5 (Policy Drift & Resumption):** In Section 5, click **Resume** ➔ Paused workflow re-reads policies on disk and halts at tightened boundaries instead of acting on stale permissions.
+    """)
 
 if not PIN_RULEBOOK:
     st.caption("Rulebook pin · off · `AGENTGATE_PIN_RULEBOOK=1` refuses a rulebook swapped "
@@ -237,6 +318,12 @@ with right:
     st.subheader("3. Audit trail and mock inbox")
     audit = state.list_audit()
     if audit:
+        from agentgate.audit_chain import verify_audit_chain
+        chain_valid, chain_err, chain_count = verify_audit_chain(state)
+        if chain_valid and chain_count > 0:
+            st.caption(f"🛡️ **Cryptographic Merkle Chain**: Verified ({chain_count} tamper-evident blocks)")
+        elif not chain_valid:
+            st.error(f"⚠️ Audit Tamper Alert: {chain_err}")
         table = pd.DataFrame(audit)[["ts", "actor", "origin", "tool", "resource", "recipient",
                                      "allowed", "rule_id", "reason", "policy_hash"]]
         table["allowed"] = table["allowed"].map({1: "ALLOWED", 0: "BLOCKED"})
@@ -252,12 +339,32 @@ with right:
             state.close()
         except Exception:
             pass
+        deleted = False
         for _ in range(3):
             try:
                 DB.unlink(missing_ok=True)
+                deleted = True
                 break
             except PermissionError:
                 time.sleep(0.2)
+        if not deleted and DB.exists():
+            # Fallback for Windows file locks: truncate tables cleanly rather than raising
+            try:
+                import sqlite3
+                conn = sqlite3.connect(DB)
+                conn.executescript("""
+                    DELETE FROM audit;
+                    DELETE FROM outbox;
+                    DELETE FROM artifacts;
+                    DELETE FROM workflow_steps;
+                    DELETE FROM workflows;
+                    DELETE FROM read_history;
+                    VACUUM;
+                """)
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass
         st.session_state.clear()
         st.rerun()
 
