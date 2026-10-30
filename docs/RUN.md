@@ -68,12 +68,13 @@ run. They are not independently authored. The mutation check is what makes the n
 
 | Claim | Command |
 |---|---|
-| the suite is green | `pytest` — 225 tests, 224 pass, 1 documented xfail |
+| the suite is green | `pytest` — 233 tests, 232 pass, 1 documented xfail |
 | the frozen table is matched | `python -m benchmark.runner` — 32/32 |
 | the table would notice a break | `python -m benchmark.mutations` — 6/6 detected |
 | the attacks are refused | `python -m redteam` — 21 of 22 held, one documented |
 | the demo script actually runs | `python demo/rehearse.py` — 12 beats, exit 0, under 90 s |
 | the trail can leave the app | `python -m agentgate.export <db> exports/` |
+| the trail can be read in a browser | `python web/app.py` — read-only, every number from SQLite |
 
 `python demo/rehearse.py` exits `1` and names the beat when the demo breaks; add
 `--break-rule SAVE-ANALYST` to watch it do that on purpose against a scratch rulebook.

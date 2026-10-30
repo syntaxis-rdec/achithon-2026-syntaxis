@@ -1001,6 +1001,12 @@
      </div>
     </header>
     <div class="content">
+     <div id="liveBar" style="margin:0 0 16px;padding:10px 14px;border-radius:10px;background:#f4f7fb;border:1px solid #dbe4f0;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#334155;display:flex;gap:18px;flex-wrap:wrap">
+      <span><b>READ-ONLY</b> view of {{ snapshot.meta.database }}</span>
+      <span>rulebook <code>{{ snapshot.policy.fingerprint if snapshot.policy else 'not found' }}</code></span>
+      <span>{{ snapshot.counts.decisions }} decisions · {{ snapshot.counts.blocked }} blocked · {{ snapshot.counts.delivered }} delivered</span>
+      <span>{{ 'live data' if snapshot.meta.live else 'no database yet — zeros shown' }}</span>
+     </div>
      <section class="page active" id="page-overview">
       <div class="page-head">
        <div>
@@ -1504,107 +1510,13 @@
   </div>
   <script>
   
-const toolsData = [
-    {
-        id: "DOC-01",
-        name: "Document Reader",
-        desc: "Read approved documents and extract requested information.",
-        icon: "▤",
-        enabled: true,
-        scope: "Read-only access",
-        risk: "Controlled"
-    },
-    {
-        id: "RPT-02",
-        name: "Report Saver",
-        desc: "Save generated reports with source labels and provenance metadata.",
-        icon: "▧",
-        enabled: true,
-        scope: "Create report",
-        risk: "Controlled"
-    },
-    {
-        id: "INB-03",
-        name: "Mock Inbox Delivery",
-        desc: "Deliver approved reports to a simulated inbox.",
-        icon: "✉️",
-        enabled: false,
-        scope: "External-style action",
-        risk: "Approval required"
-    }
-];
-
-let events = [
-    {
-        id: "EVT-0091",
-        tool: "Document Reader",
-        action: "read_document",
-        decision: "Allowed",
-        reason: "Document is within the permitted workspace scope.",
-        time: "10:42:18"
-    },
-    {
-        id: "EVT-0090",
-        tool: "Mock Inbox Delivery",
-        action: "deliver_report",
-        decision: "Blocked",
-        reason: "No independent delivery authorization was found.",
-        time: "10:39:04"
-    },
-    {
-        id: "EVT-0089",
-        tool: "Report Saver",
-        action: "save_report",
-        decision: "Allowed",
-        reason: "Report saved with source provenance attached.",
-        time: "10:35:51"
-    },
-    {
-        id: "EVT-0088",
-        tool: "Document Reader",
-        action: "read_document",
-        decision: "Review",
-        reason: "Requested document requires administrator review.",
-        time: "10:31:22"
-    }
-];
-
-let approvals = [
-    {
-        id: "REQ-2041",
-        tool: "Document Reader",
-        action: "Read restricted document",
-        risk: "Medium"
-    },
-    {
-        id: "REQ-2042",
-        tool: "Mock Inbox Delivery",
-        action: "Deliver quarterly report",
-        risk: "High"
-    }
-];
-
-let workflows = [
-    {
-        id: "WF-1048",
-        name: "Quarterly report workflow",
-        checkpoint: "Report saved · Step 2 of 3",
-        status: "Paused"
-    },
-    {
-        id: "WF-1047",
-        name: "Policy document review",
-        checkpoint: "Document read · Step 1 of 3",
-        status: "In progress"
-    },
-    {
-        id: "WF-1042",
-        name: "Monthly summary delivery",
-        checkpoint: "Completed · Step 3 of 3",
-        status: "Completed"
-    }
-];
-
+// Injected by web/app.py from the SQLite file the gateway writes. Empty database -> zeros,
+// not demo data. Jinja escapes this for script context.
+const SNAPSHOT = {{ snapshot | tojson }};
+const toolsData = SNAPSHOT.tools || [];
+let events = SNAPSHOT.events || [];
+let approvals = SNAPSHOT.approvals || [];
+let workflows = SNAPSHOT.workflows || [];
 let pendingAction = null;
 
 const $ = selector => document.querySelector(selector);
@@ -1840,15 +1752,11 @@ function renderAll() {
     renderApprovals();
     renderWorkflows();
 
-    $("#statBlocked").textContent = String(
-        events.filter(e =>
-            e.decision === "Blocked" ||
-            e.decision === "Denied"
-        ).length + 7
-    ).padStart(2, "0");
+    $("#statBlocked").textContent =
+        String(SNAPSHOT.counts.blocked).padStart(2, "0");
 
     $("#statReviewed").textContent =
-        String(128 + events.length - 4);
+        String(SNAPSHOT.counts.decisions).padStart(2, "0");
 }
 
 
@@ -1918,142 +1826,19 @@ $("#confirmModal").addEventListener("click", () => {
 });
 
 
-$("#runCheck").addEventListener("click", () => {
-    openModal(
-        "Run security check",
-        "The demo will evaluate a document-read request against the current tool configuration.",
-        () => {
-            const doc = toolsData[0];
+// This page is read-only. Approving, resuming, pausing and executing belong to the Streamlit
+// dashboard, which goes through the guarded gateway; a second action surface would be a second
+// thing to secure, so the controls here refuse instead of pretending.
+function readOnly(what) {
+    toast(what + " is read-only here. Act in the Streamlit dashboard (streamlit run app.py).");
+}
 
-            if (doc.enabled) {
-                addEvent(
-                    "Document Reader",
-                    "read_document",
-                    "Allowed",
-                    "Policy check passed: tool is enabled and request is within the demo scope."
-                );
-
-                toast("Security check passed");
-            } else {
-                addEvent(
-                    "Document Reader",
-                    "read_document",
-                    "Blocked",
-                    "Policy check failed: document reader is disabled."
-                );
-
-                toast("Request blocked by policy");
-            }
-        }
-    );
-});
-
-
-$("#toolSettings").addEventListener("click", e => {
-    const b = e.target.closest("[data-tool]");
-
-    if (!b) return;
-
-    const t = toolsData.find(x => x.id === b.dataset.tool);
-
-    t.enabled = !t.enabled;
-
-    addEvent(
-        t.name,
-        "change_tool_access",
-        t.enabled ? "Allowed" : "Blocked",
-        `Administrator ${t.enabled ? "enabled" : "disabled"} this tool in the demo configuration.`
-    );
-
-    toast(`${t.name} ${t.enabled ? "enabled" : "disabled"}`);
-});
-
-
-$("#approvalRows").addEventListener("click", e => {
-    const b = e.target.closest("[data-approval]");
-
-    if (!b) return;
-
-    const a = approvals.find(x => x.id === b.dataset.approval);
-    const decision = b.dataset.decision;
-
-    openModal(
-        `${decision} request?`,
-        `${decision} only ${a.action.toLowerCase()} for ${a.tool}. This does not grant general access.`,
-        () => {
-            approvals = approvals.filter(x => x.id !== a.id);
-
-            addEvent(
-                a.tool,
-                a.action.toLowerCase().replaceAll(" ", "_"),
-                decision,
-                decision === "Approved"
-                    ? "Administrator approved this specific action."
-                    : "Administrator denied this specific action."
-            );
-
-            toast(`Request ${decision.toLowerCase()}`);
-        }
-    );
-});
-
-
-$("#workflowRows").addEventListener("click", e => {
-    const r = e.target.closest("[data-resume]");
-    const p = e.target.closest("[data-pause]");
-
-    if (r) {
-        const w = workflows.find(x => x.id === r.dataset.resume);
-
-        w.status = "In progress";
-
-        addEvent(
-            "Workflow Engine",
-            "resume_workflow",
-            "Allowed",
-            `Workflow resumed from checkpoint: ${w.checkpoint}.`
-        );
-
-        toast("Workflow resumed from saved checkpoint");
-    }
-
-    if (p) {
-        const w = workflows.find(x => x.id === p.dataset.pause);
-
-        w.status = "Paused";
-
-        addEvent(
-            "Workflow Engine",
-            "pause_workflow",
-            "Allowed",
-            "Workflow paused and current checkpoint retained."
-        );
-
-        toast("Workflow paused");
-    }
-
-    renderWorkflows();
-});
-
-
-$("#newWorkflow").addEventListener("click", () => {
-    const id = "WF-" + (1049 + workflows.length);
-
-    workflows.unshift({
-        id,
-        name: "New protected workflow",
-        checkpoint: "Ready · Step 0 of 3",
-        status: "In progress"
+["runCheck", "toolSettings", "approvalRows", "workflowRows", "newWorkflow"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", e => {
+        e.preventDefault();
+        readOnly("This view");
     });
-
-    addEvent(
-        "Workflow Engine",
-        "create_workflow",
-        "Allowed",
-        "New workflow created with independent authorization checkpoints."
-    );
-
-    toast("New workflow created");
 });
 
 
@@ -2095,19 +1880,16 @@ $("#exportAudit").addEventListener("click", () => {
 
     URL.revokeObjectURL(url);
 
-    toast("Audit CSV exported");
+    toast("Audit CSV exported (the full pack: python -m agentgate.export <db> exports/)");
 });
 
 
-$("#saveSettings").addEventListener("click", () => {
-    toast("Workspace settings saved in this session");
-});
-
+$("#saveSettings").addEventListener("click", () => readOnly("Settings"));
 
 document.querySelectorAll(".toggle[aria-label]").forEach(b => {
-    b.addEventListener("click", () => {
-        b.classList.toggle("on");
-        toast("Preference updated for this demo session");
+    b.addEventListener("click", e => {
+        e.preventDefault();
+        readOnly("This preference");
     });
 });
 

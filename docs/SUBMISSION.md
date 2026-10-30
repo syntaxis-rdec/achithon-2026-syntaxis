@@ -8,7 +8,7 @@ prints today.
 ```bash
 python -m venv .venv && .venv/Scripts/activate     # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-pytest                                    # 225 tests: 224 pass, 1 documented xfail
+pytest                                    # 233 tests: 232 pass, 1 documented xfail
 python -m benchmark.runner                # 32/32 scenarios, 0 unauthorized, 0 false allows
 python -m benchmark.mutations             # 6/6 deliberate breakages detected
 python -m redteam                         # 22 attacks: 21 held, 1 open finding (LF-2)
@@ -27,6 +27,7 @@ benchmark/        scenarios.json, runner, mutations, results.json (the frozen ta
 data/             principals.json, policies.json, documents/, eval_documents/
 demo/             seed.py, swap_policy.py, policies_default.json, policies_tight.json, rehearse.py
 redteam/          attacks.py, results.json
+web/              read-only evidence view (Flask) over the same SQLite file
 tests/            the suite, including the export, guard, red-team and rehearsal tests
 docs/             RUN, DEMO_SCRIPT, DEMO_RUNSHEET, JUDGE_QA, PROPOSER, SUBMISSION, PLAN
 team/             lane briefs and the three reports (NOTES/REPORT files)

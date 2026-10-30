@@ -883,3 +883,35 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+
+## [2026-10-30T23:56:09+05:30] Aryan's web page completed: computed from the store, read-only, tested
+
+User Prompt (verbatim, secrets redacted):
+"complete the task of aryan and the flask thing"
+
+Agent Response Summary:
+Finished the Flask layer instead of labelling it a mockup. web/app.py now builds a snapshot at request
+time from the SQLite file the gateway writes, the rulebook on disk and the two published evidence
+artifacts, and renders it into the existing design; with no database it renders zeros and says so. The
+hardcoded demo arrays and the fake arithmetic in the counters (+7, 128 + events.length - 4) are gone, and
+the approve/deny/resume/pause handlers that mutated local JavaScript are replaced by a read-only refusal
+pointing at the Streamlit dashboard, so the page is not a second action surface. GET /api/snapshot exposes
+the same object. Added tests/test_web_live.py with eight tests: empty world renders zeros, the demo
+arithmetic is gone, the page agrees with the database after real gateway decisions, events carry the real
+rule and reason, workflows and pending steps come from workflow_steps, evidence numbers equal the
+published artifacts, POST is refused with 405, and rendering writes no rows. Rewrote web/README.md and
+updated the published counts to 233 tests, 232 passing and 1 documented xfail.
+
+Actions:
+* Rewrote web/app.py and web/templates/index.html (data injected via Jinja, fake handlers removed, live banner)
+* Created tests/test_web_live.py; rewrote web/README.md
+* Updated README.md, docs/RUN.md, docs/SUBMISSION.md, team/README.md, .github/workflows/ci.yml, NOTES files
+* Ran pytest (232 passed, 1 xfailed), tests/test_web_live.py + tests/test_web.py (10 passed), rendered the page against a seeded database
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none

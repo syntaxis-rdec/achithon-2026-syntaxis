@@ -26,10 +26,14 @@ Frontend interface implemented in `web/` using Flask and HTML/CSS/JavaScript.
 - **Flask was never declared.** It was absent from `requirements.txt`, so those two tests could not
   pass on a clean clone — verified by `ModuleNotFoundError` in this environment. `requirements.txt`
   now pins `flask>=3.0`, and the two tests run in the normal suite and in CI.
-- **The page is static.** `web/app.py` is one route calling `render_template`, and `index.html` makes
-  no request to the gateway: zero `fetch()` or `/api/` calls in the template. Every panel is HTML, so
-  it must not be presented as live evidence beside the Streamlit dashboard, which is computed by the
-  policy engine on every click. Either wire the panels to the gateway, or label the page a mockup.
+- **The page was static; it is now computed.** As merged it was one route rendering hardcoded demo
+  rows, with counters that added constants (`+ 7`, `128 + events.length - 4`) to look busy. It now
+  reads the SQLite file the gateway writes, the rulebook on disk and the two published evidence
+  artifacts at request time, renders zeros instead of demo data when no database exists, and exposes
+  `GET /api/snapshot` for the same object. The fake approve/resume/pause handlers are replaced by a
+  read-only refusal that points at the Streamlit dashboard, because a second action surface would be
+  a second thing to secure. `tests/test_web_live.py` drives the real gateway and requires the page to
+  agree with the database; `web/README.md` documents it.
 - **That verification ran 21 commits behind `main`.** "Baseline core tests: all passing" was measured
   against code older than the policy guard, the proposer and the rehearsal; the current suite is the
   number to trust.

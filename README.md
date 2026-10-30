@@ -42,7 +42,7 @@ python -m benchmark.runner      # 32 frozen scenarios → benchmark/results.json
 python -m benchmark.mutations   # breaks the gateway six ways; every break must be detected
 python -m redteam               # 22 named attacks: 21 held, 1 documented open finding
 python demo/rehearse.py         # the whole stage demo, 12 beats, under 90 seconds
-pytest                          # 225 tests: 224 pass, 1 documented xfail
+pytest                          # 233 tests: 232 pass, 1 documented xfail
 ```
 
 `python -m agentgate.export <db> exports/` turns a live database into `audit.csv`, `audit.json`,
@@ -76,6 +76,7 @@ independently authored; the mutation check is what makes the number worth readin
 agentgate/    core, plus the policy guard, the proposer and the audit export
 benchmark/    scenario suite and mutation check
 redteam/      named attacks, and the board published as results.json
+web/          read-only evidence view over the same SQLite file (python web/app.py)
 demo/         seeder, rulebook swap and the stage-demo rehearsal runner
 data/         policies, principals, sample documents, the injection corpus
 docs/         run guide, demo script and runsheet, judge Q&A, proposer, submission checklist
