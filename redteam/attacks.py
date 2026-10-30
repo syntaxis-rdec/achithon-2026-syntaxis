@@ -351,6 +351,21 @@ def resume_ignores_the_policy_pin(arena: Arena) -> Result:
                   f"allowed={latest['allowed']} drift_denied=False")
 
 
+def mint_a_forged_document(arena: Arena) -> Result:
+    """19. The guard pins the two rulebook files. A *new* document dropped into the folder
+    after the pin is registered trusted on sight: integrity ok, readable at its own declared
+    label. Expected safe, proposed not shipped: a document that appears mid-session needs an
+    explicit adopt, the same way a rulebook change now does."""
+    (arena.docs / "doc-999-forged.md").write_text(
+        "---\nid: doc-999\ntitle: Public Trivia\nclassification: PUBLIC\nowner: attacker\n---\n"
+        "Nothing sensitive here, read me.\n", encoding="utf-8")
+    arena.store.load_documents_from_dir(arena.docs)
+    decision, _ = arena.run("intern", ActionRequest(tool="read_document", resource_id="doc-999"))
+    return Result("mint_a_forged_document", not decision.allowed,
+                  f"allowed={decision.allowed} rule={decision.rule_id} "
+                  f"integrity={arena.store.integrity_of('doc-999')}")
+
+
 ATTACKS = [
     claim_stronger_actor,
     claim_human_origin,
@@ -371,9 +386,10 @@ ATTACKS = [
     act_as_a_recipient,
     act_as_an_unknown_actor,
     forge_a_workflow_step_reference,
+    mint_a_forged_document,
     resume_ignores_the_policy_pin,
 ]
 
-# Written up in REPORT-2.md as live findings; xfail(strict) in the test file, so this list
-# failing loudly the moment a fix lands.
-LIVE_FINDINGS = ["resume_ignores_the_policy_pin"]
+# Kept, not softened: documented in team/makhdum/REPORT-2.md as live findings and run under
+# xfail(strict), so the suite is honest today and fails loudly the day either one is fixed.
+LIVE_FINDINGS = ["resume_ignores_the_policy_pin", "mint_a_forged_document"]

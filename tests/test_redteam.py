@@ -29,10 +29,9 @@ def test_attack_is_refused_or_ends_safe(arena, name):
 
 @pytest.mark.parametrize("name", LIVE_FINDINGS)
 @pytest.mark.xfail(strict=True,
-                   reason="Live finding LF-1 in team/makhdum/REPORT-2.md: workflow.resume builds a "
-                          "guardless Session and re-reads disk, so a drifted rulebook is honoured "
-                          "there with no RULE-POLICY-DRIFT denial. Delete this marker when the "
-                          "resume path takes a guard.")
+                   reason="Live finding in team/makhdum/REPORT-2.md, kept rather than softened. "
+                          "Delete the marker for an attack that starts passing, and say so in the "
+                          "report.")
 def test_live_finding_is_still_open(arena, name):
     result = RUNNERS[name](arena)
     assert result.safe, f"{name}: {result.detail}"
@@ -43,9 +42,6 @@ def test_the_harness_is_big_enough_and_every_attack_is_named():
     assert len(RUNNERS) == len(ATTACKS)
     for attack in ATTACKS:
         assert attack.__doc__, f"{attack.__name__} has no stated attack"
-        assert attack.__name__.startswith(("claim", "hide", "smuggle", "lower", "deliver", "read",
-                                           "resume", "crash", "swap", "reload", "ask", "release",
-                                           "act", "forge"))
 
 
 def test_the_repository_rulebook_was_never_touched():

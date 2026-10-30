@@ -436,3 +436,37 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+
+## [2026-10-30T17:03:11+05:30] Task 2 delivered: policy integrity guard, red-team harness, two live findings
+
+User Prompt (verbatim, secrets redacted):
+"read my new work"
+
+Agent Response Summary:
+Read team/makhdum/TASK-2.md and built it. The rulebook (principals plus policies) is pinned at load by a
+new agentgate/policy_guard.py; Session.submit checks the pin before evaluating, so a mid-session swap is
+denied under RULE-POLICY-DRIFT and audited with no tool executed. A guarded registry adopts a new rulebook
+only through reload_rulebook(token), and both adoption and refusal write audit rows; the dashboard shows
+the pin, offers a token field and disables Resume while disk and pin differ. Built redteam/attacks.py with
+21 named attacks in a copied arena plus tests/test_redteam.py and nine guard unit tests. Two attacks
+succeed today and are kept failing, not softened, under xfail(strict): workflow.resume builds a guardless
+session and honours an unadopted rulebook (LF-1, reproduced as an intern reading a CONFIDENTIAL document
+after principals and policies were edited without any reload), and a document minted after the pin is
+trusted on sight (LF-2). agentgate/workflow.py is outside the allowed edit list, so LF-1 is filed as a
+request with the exact one-parameter change instead of being fixed. pytest 106 passed 2 xfailed with all
+76 pre-existing tests green and untouched; benchmark 32/32; all six mutations detected; results.json
+restored after every run.
+
+Actions:
+* Created agentgate/policy_guard.py, redteam/__init__.py, redteam/attacks.py, tests/test_redteam.py, tests/test_policy_guard.py, team/makhdum/REPORT-2.md
+* Edited agentgate/gateway.py, agentgate/sessions.py, app.py (all four inside the task's allowed list)
+* Ran pytest (106 passed, 2 xfailed), benchmark.runner (32/32), benchmark.mutations (6 detected), py_compile on every edited file
+* Committed 043f262, 088c85f, d86ee28, c035d48 on lane/makhdum
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none

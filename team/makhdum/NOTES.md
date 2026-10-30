@@ -119,3 +119,34 @@ Merged into `main` at `dbb97b6` by Tanush. All four lane commits are on `main`:
 Follow-ups awaiting a merge (both docs-only or lane-only, no core file touched):
 `de83503` — merge status and the stale test counts; `9d65bb6` — the substituted-text property and
 the two committed mutation checks, which take the pack from 25 to 33 tests.
+
+---
+
+# Task 2 — policy integrity guard and red-team harness
+
+Full write-up: `team/makhdum/REPORT-2.md`. Short version: the rulebook is now pinned at load, a
+mid-session swap is denied under `RULE-POLICY-DRIFT` and audited, adoption needs the operator token
+and is audited either way, and 21 named attacks run against a copied world.
+
+Two attacks are kept failing as live findings rather than softened: `workflow.resume` builds a
+guardless session and honours an unadopted rulebook (LF-1), and a document minted after the pin is
+trusted on sight (LF-2). Both are `xfail(strict)` in `tests/test_redteam.py`.
+
+## Requests (task 2)
+
+- **`agentgate/workflow.py` — needs one parameter.** `resume(state, workflow_id, principals_path,
+  policies_path, guard=None)` and pass it to the `Session` it constructs at `workflow.py:77`.
+  Without it the resume path decides against disk bytes nobody adopted, which is LF-1. `app.py` will
+  hand it the registry's guard as soon as the signature allows it. Not in my allowed edit list.
+- `benchmark/` — a drift scenario would make the evidence table cover the guard. Currently the
+  benchmark runs guardless by design, so 32/32 says nothing about drift.
+- `docs/RUN.md` — the dashboard reload now needs `AGENTGATE_RELOAD_TOKEN`; the run guide does not
+  mention it, and unset means the operator cannot adopt a rulebook at all.
+- `README.md:43` still says `pytest # 42 tests`. It is 106 passing with 2 strict xfails now.
+
+## Ready to merge (task 2)
+
+- Commits `043f262`, `088c85f`, `d86ee28`, `c035d48` plus the report commit.
+- `pytest` — **106 passed, 2 xfailed**. All 76 pre-existing tests still green, untouched.
+- `python -m benchmark.runner` — 32/32, 0 unauthorized, 0 false allows. `benchmark.mutations` — all
+  six detected. `benchmark/` and `agentgate/store.py` schema not edited.
