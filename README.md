@@ -40,11 +40,17 @@ Then open the local URL Streamlit prints. Full walkthrough: [docs/RUN.md](docs/R
 ```bash
 python -m benchmark.runner      # 32 frozen scenarios → benchmark/results.json
 python -m benchmark.mutations   # breaks the gateway six ways; every break must be detected
-pytest                          # 42 tests
+python -m redteam               # 22 named attacks: 21 held, 1 documented open finding
+python demo/rehearse.py         # the whole stage demo, 12 beats, under 90 seconds
+pytest                          # 223 tests: 222 pass, 1 documented xfail
 ```
 
+`python -m agentgate.export <db> exports/` turns a live database into `audit.csv`, `audit.json`,
+`outbox.csv` and `summary.json`, redacting key-shaped strings first.
+
 Current result: **32/32 scenarios matched, 0 unauthorized executions, 0 false allows, 0 false denies,
-32/32 complete audit rows, all six mutations detected.**
+32/32 complete audit rows, all six mutations detected, 21 of 22 red-team attacks held, and the whole
+stage demo rehearsed green in about six seconds.**
 
 The expectations were written by this team from the specification and frozen before the run. They are not
 independently authored; the mutation check is what makes the number worth reading.
@@ -67,11 +73,13 @@ independently authored; the mutation check is what makes the number worth readin
 ## Repository layout
 
 ```
-agentgate/    core
+agentgate/    core, plus the policy guard, the proposer and the audit export
 benchmark/    scenario suite and mutation check
-data/         policies, principals, documents
-docs/         PS08 specification, build plan, run guide, trace instructions
-team/         teammate lanes (Makhdum: injection pack, Aryan: audit export)
+redteam/      named attacks, and the board published as results.json
+demo/         seeder, rulebook swap and the stage-demo rehearsal runner
+data/         policies, principals, sample documents, the injection corpus
+docs/         run guide, demo script and runsheet, judge Q&A, proposer, submission checklist
+team/         teammate lanes, their briefs and their reports
 tests/        pytest suite
 app.py        dashboard
 log.txt       append-only agent session log required by the repository rules

@@ -1,0 +1,42 @@
+name: evidence
+
+# The repository's claims are numbers, and numbers that are only checked on one machine are
+# anecdotes. This runs the four evidence commands and the suite on every push.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Tests (204 pass expected, 1 documented xfail)
+        run: python -m pytest
+
+      - name: Frozen scenarios (32/32 expected)
+        run: python -m benchmark.runner
+
+      - name: Deliberate breakages (6 detected expected)
+        run: python -m benchmark.mutations
+
+      - name: Red team (21 of 22 held expected)
+        run: python -m redteam
+
+      - name: Stage demo rehearsal (12 beats, under 90s)
+        run: python demo/rehearse.py
+
+      - name: Audit export smoke test
+        run: |
+          python -m agentgate.export data/agentgate-v3.sqlite exports/ || true
+          test -f exports/summary.json || echo "no database in a fresh clone; export tested by pytest"

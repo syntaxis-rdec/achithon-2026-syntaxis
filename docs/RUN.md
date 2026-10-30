@@ -64,6 +64,20 @@ executions, 0 false allows, 0 false denies, 32/32 complete audit rows, all six m
 Honest caveat: the expectations were written by this team from the specification and frozen before the
 run. They are not independently authored. The mutation check is what makes the number meaningful.
 
+## One command per claim
+
+| Claim | Command |
+|---|---|
+| the suite is green | `pytest` — 223 tests, 222 pass, 1 documented xfail |
+| the frozen table is matched | `python -m benchmark.runner` — 32/32 |
+| the table would notice a break | `python -m benchmark.mutations` — 6/6 detected |
+| the attacks are refused | `python -m redteam` — 21 of 22 held, one documented |
+| the demo script actually runs | `python demo/rehearse.py` — 12 beats, exit 0, under 90 s |
+| the trail can leave the app | `python -m agentgate.export <db> exports/` |
+
+`python demo/rehearse.py` exits `1` and names the beat when the demo breaks; add
+`--break-rule SAVE-ANALYST` to watch it do that on purpose against a scratch rulebook.
+
 ## Honesty notes
 
 - There is no login. Identities are bound by the session object, not authenticated.

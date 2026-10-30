@@ -6,7 +6,7 @@ work lands, so neither lane edits `agentgate/` internals, `app.py`, or `benchmar
 | Person | Lane | Folder | Branch |
 |---|---|---|---|
 | Makhdum | Task 3: automated rehearsal of the full stage demo | `team/makhdum/` (`TASK-3.md`) | `lane/makhdum` |
-| Aryan | Unchanged since 17:27: static Flask mockup, unmerged, needs a decision | `team/aryan/` (`README.md`) | `lane/aryan` |
+| Aryan | Audit export and submission packaging — **delivered on `lane/makhdum`** (his branch was empty) | `team/aryan/` (`NOTES.md`) | `lane/aryan` |
 | Tanush | Gateway, dashboard, evidence, resumption, AI proposer | `docs/`, `agentgate/`, `app.py` | `main`, `work/*` |
 
 `main` belongs to Tanush. Never commit or push to `main`. Work only on your lane branch.
@@ -39,7 +39,7 @@ git merge origin/main            # never rebase, never force-push
   non-empty `tool=` line naming your exact harness. Never log secrets. Log conflicts are expected;
   keep both entries and commit the merge.
 - Run the test suite with `.venv\Scripts\python.exe -m pytest` (Windows) or `.venv/bin/python -m pytest`.
-  All existing tests must still pass before you commit. Baseline: **34 passing**.
+  All existing tests must still pass before you commit. Baseline: **223 tests — 222 passing, 1 documented xfail**.
 - Own only your files. If you need a change in someone else's file, write it in your own `NOTES.md`
   under a `## Requests` heading and continue with a fallback.
 - Commit small, with `type: what works` messages. Never amend, never force-push, never reset.
