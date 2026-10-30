@@ -1,21 +1,48 @@
-# Aryan — Notes
+# Aryan — Lane Notes
 
-## Status: delivered, but not on this branch
+This file merges two deliveries that landed on the same path. Aryan wrote the web presentation layer
+on `lane/aryan`; the audit export and submission packaging were built on `lane/makhdum`, because this
+branch had no commits on it when the submission deadline came into view. Both are recorded below,
+attributed, and the add/add conflict was resolved by keeping both rather than picking a winner.
 
-`lane/aryan` was byte-identical to `main` (zero commits) while the submission packaging was the last
-unbuilt deliverable on the team's critical path. At the finder's request these four files were built on
-`lane/makhdum` instead, so nothing of anyone else's was touched and Tanush can merge them normally. All
-four are **new files**; no existing file was edited:
+## Aryan — web presentation layer (`web/`)
+
+### Status, as written by Aryan
+
+Frontend interface implemented in `web/` using Flask and HTML/CSS/JavaScript.
+
+- `web/app.py`: Flask application server.
+- `web/templates/index.html`: Dashboard UI with Overview, Tools, Approvals, Workflows, Audit, and Settings.
+- `web/README.md`: Run and feature documentation.
+- `tests/test_web.py`: Automated tests verifying route availability and required UI panel headings.
+
+### Verification, as written by Aryan
+
+- `python -m pytest tests/test_web.py`: 2 passed.
+- Baseline core tests: all passing.
+
+### Caveats recorded at merge time
+
+- **Flask was never declared.** It was absent from `requirements.txt`, so those two tests could not
+  pass on a clean clone — verified by `ModuleNotFoundError` in this environment. `requirements.txt`
+  now pins `flask>=3.0`, and the two tests run in the normal suite and in CI.
+- **The page is static.** `web/app.py` is one route calling `render_template`, and `index.html` makes
+  no request to the gateway: zero `fetch()` or `/api/` calls in the template. Every panel is HTML, so
+  it must not be presented as live evidence beside the Streamlit dashboard, which is computed by the
+  policy engine on every click. Either wire the panels to the gateway, or label the page a mockup.
+- **That verification ran 21 commits behind `main`.** "Baseline core tests: all passing" was measured
+  against code older than the policy guard, the proposer and the rehearsal; the current suite is the
+  number to trust.
+
+## Makhdum — audit export and submission packaging
+
+Built at the finder's request while this lane was empty, on `lane/makhdum`, then merged here. All four
+files were new; no existing file was edited to add them:
 
 - `agentgate/export.py`
 - `tests/test_export.py` (12 tests)
 - `docs/SUBMISSION.md`
 - `team/aryan/NOTES.md` (this file)
-
-If the lane is to carry its own commits, fast-forward `lane/aryan` to the export commit rather than
-cherry-picking; the history is already linear.
-
-## What the export does
 
 ```bash
 python -m agentgate.export data/agentgate-v3.sqlite exports/
@@ -24,10 +51,10 @@ export: 1 decisions (1 allowed, 0 blocked), 0 messages, 1 artifacts, 0 redaction
 ```
 
 That is the real output from a database freshly seeded by `demo/seed.py` into a scratch directory: one
-staged report, one ALLOWED decision, no delivery yet. Exit `0`; exit `2` with a message when the database
-is missing or the arguments are wrong. The directory is created, `exports/` stays git-ignored.
+staged report, one ALLOWED decision, no delivery yet. Exit `0`; exit `2` with a message when the
+database is missing or the arguments are wrong. The directory is created, `exports/` stays git-ignored.
 
-## Findings worth keeping
+### Findings worth keeping
 
 - **`list_audit` is newest-first.** `ORDER BY id DESC` is deliberate in `store.py`, so the CSV inherits
   it. The test asserts the order explicitly rather than pretending it is chronological — a reviewer
@@ -48,11 +75,11 @@ is missing or the arguments are wrong. The directory is created, `exports/` stay
   at different times differ in `generated_at` and in that hash, so a reviewer can tell whether a pack
   was regenerated or edited by hand.
 
-## Verification
+### Verification
 
 ```
 pytest tests/test_export.py -q        -> 12 passed
-pytest                                -> 222 passed, 1 xfailed (the documented LF-2 red team finding)
+pytest                                -> full suite green, web tests included
 ```
 
 Covers: known actions produce the documented columns and row count; the outbox records the addressee
@@ -61,9 +88,11 @@ counted while the policy fingerprint survives; summary counts equal the rows in 
 output directory is created when missing; the CLI writes four files and prints exactly one line; a
 missing database exits 2; each secret shape is redacted on its own; ordinary decision text is untouched.
 
-## Requests
+### Requests
 
 - None blocking. `docs/SUBMISSION.md` and the run-guide table are in this same commit series, so the
   checklist is reachable from the docs that already exist.
-- If the demo ever shows the export live, the seeded database produces a thin pack (one decision). Drive
-  a few beats first, then export, or run the export after the rehearsal has walked the demo.
+- If the web page is kept, its panels need a decision: wire them to the gateway, or rename it in
+  `web/README.md` so nobody demos it as live.
+- If the export is ever shown live, drive a few demo beats first: the seeded database produces a thin
+  pack (one decision).
