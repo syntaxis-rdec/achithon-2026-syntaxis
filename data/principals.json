@@ -1,0 +1,44 @@
+[
+  {
+    "id": "analyst",
+    "kind": "actor_and_recipient",
+    "role": "analyst",
+    "clearance": "CONFIDENTIAL",
+    "allowed_recipients": ["manager@corp.example", "team@corp.example"]
+  },
+  {
+    "id": "agent-assistant",
+    "kind": "actor",
+    "role": "agent",
+    "clearance": "INTERNAL",
+    "allowed_recipients": ["manager@corp.example"]
+  },
+  {
+    "id": "intern",
+    "kind": "actor",
+    "role": "intern",
+    "clearance": "PUBLIC",
+    "allowed_recipients": ["team@corp.example"]
+  },
+  {
+    "id": "manager@corp.example",
+    "kind": "recipient",
+    "role": "none",
+    "clearance": "CONFIDENTIAL",
+    "allowed_recipients": []
+  },
+  {
+    "id": "team@corp.example",
+    "kind": "recipient",
+    "role": "none",
+    "clearance": "INTERNAL",
+    "allowed_recipients": []
+  },
+  {
+    "id": "vendor@outside.example",
+    "kind": "recipient",
+    "role": "none",
+    "clearance": "PUBLIC",
+    "allowed_recipients": []
+  }
+]
