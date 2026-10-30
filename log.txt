@@ -1180,3 +1180,42 @@ tool=Antigravity
 problem_id=PS08
 branch=main
 repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+## [2026-10-31T01:27:26+05:30] Task 5: every remaining gap closed, LF-2 shut, 342 tests green
+
+User Prompt (verbatim, secrets redacted):
+"now tanush is doing frontend , now complete every other remaining task in depth and with accuracy while
+taking suggested things in account of devil's advocate , no suggestion's and neccesisity should remain ,
+there should be no error , and the app should be working ,the problem statement should satisfy and do
+merge them necessarily .what is necessary should be merged ."
+
+Agent Response Summary:
+Merged main twice (his dark frontend plus the Flask embed, then the audit chain, canary and packager
+wave) and absorbed his one-line reader-guide edit from the patch branch, so no branch holds work that is
+not in this lane. Where main and my lane produced the same thing twice, main won: its export, its
+submission checklist and its template are canonical and only the bare-JWT redaction rule was ported.
+Then closed the remaining gaps. LF-2 is shut: the guard now pins the whole document set with a
+length-prefixed hash of every file name and body, refuses a document minted after the pin with
+RULE-DOCUMENT-DRIFT, and re-pins both inputs on one operator token; the board reads 22/22 with zero open
+findings, and a test states the opposite case out loud because the pins stay opt-in in the dashboard while
+the stage demo tampers with documents on purpose. Added real-HTTP smoke tests that start Streamlit and the
+Flask evidence server as subprocesses (the evidence server port is now configurable and runs without the
+reloader that held SQLite open on Windows), packaging tests that build a real archive and prove a planted
+token fails the build and the zip cannot be committed, and 64 tests that replay all 32 frozen scenarios
+through a pinned registry and then break the pin to prove the guard is really in that path. Every published
+number was re-measured and aligned across README, PITCH_DECK, RUN, SUBMISSION and CI.
+
+Actions:
+* Merged origin/main (twice) and origin/tanushgargjanuary-bot-patch-1 into lane/makhdum
+* Edited agentgate/policy_guard.py (documents_fingerprint, kind-aware drift), agentgate/gateway.py, app.py, redteam/*, web/app.py, .gitignore
+* Added tests/test_guarded_benchmark.py, tests/test_server_smoke.py, tests/test_packaging.py; extended tests/test_policy_guard.py and tests/test_redteam.py
+* Ran pytest (342 passed, 1 skipped, 0 failed), demo/rehearse.py (12/12, 6.4s), python -m redteam (22/22), benchmark.runner (32/32), benchmark.mutations (6/6), package_submission.py, py_compile on every edited file
+* Committed 74e37dc, 7345e39, fc34406 plus the two merges on lane/makhdum
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none
