@@ -107,8 +107,13 @@ def snapshot(data: Path | None = None) -> dict:
             "id": f"EVT-{len(audit) - index:04d}",
             "tool": TOOL_META.get(tool, {}).get("name", tool),
             "action": tool,
+            "actor": row.get("actor", "agent"),
+            "resource_id": row.get("resource_id", "—"),
+            "rule_id": row.get("rule_id", "—"),
             "decision": "Allowed" if row["allowed"] else "Blocked",
             "reason": row["reason"],
+            "prev_hash": row.get("prev_hash") or "",
+            "entry_hash": row.get("entry_hash") or "",
             "time": str(row["ts"])[11:19] or str(row["ts"]),
         })
 
@@ -141,6 +146,22 @@ def snapshot(data: Path | None = None) -> dict:
     benchmark = _read_json(ROOT / "benchmark" / "results.json") or {}
     redteam = _read_json(ROOT / "redteam" / "results.json") or {}
 
+    chain_info = {"valid": True, "error": "", "verified_count": 0, "genesis": "0" * 64}
+    if live and len(audit) > 0:
+        try:
+            from agentgate.audit_chain import verify_audit_chain
+            store = Store(db)
+            c_valid, c_err, c_count = verify_audit_chain(store, auto_compute=False)
+            store.close()
+            chain_info = {
+                "valid": c_valid,
+                "error": c_err,
+                "verified_count": c_count,
+                "genesis": "0" * 64,
+            }
+        except Exception as ex:
+            chain_info["error"] = str(ex)
+
     return {
         "meta": {
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -148,6 +169,7 @@ def snapshot(data: Path | None = None) -> dict:
             "live": live,
             "read_only": True,
         },
+        "chain": chain_info,
         "policy": policy,
         "tools": tools,
         "events": events,

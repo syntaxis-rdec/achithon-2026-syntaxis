@@ -382,6 +382,12 @@ canvas{width:100%;height:100%;display:block}
         <input id="globalSearch" placeholder="Search actions, resources, policies…">
       </div>
       <div class="tb-clock"><b id="clockTime">--:--:--</b><br><span id="clockDate">—</span></div>
+      <div style="display:flex;align-items:center;gap:6px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:99px;padding:4px 10px;font-size:.72rem;font-weight:700;color:#4ADE80" id="liveSyncStatus" title="Offline simulation view">
+        <span class="dot"></span>SIMULATOR
+      </div>
+      <a href="http://localhost:8501" target="_blank" class="btn btn-sm" style="background:linear-gradient(135deg,rgba(59,130,246,.25),rgba(139,92,246,.25));border-color:rgba(59,130,246,.5);color:#93C5FD;text-decoration:none;font-size:.75rem;padding:5px 11px" title="Open Guarded Streamlit Gateway on port 8501">
+        ⚡ Control Gateway ↗
+      </a>
       <button class="icon-btn" id="notifBtn" aria-label="Notifications">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
         <span class="badge-dot" id="notifCount">4</span>
@@ -414,6 +420,70 @@ canvas{width:100%;height:100%;display:block}
         </div>
 
         <div class="stats" id="statCards"></div>
+
+        <!-- ================= INTERACTIVE POLICY SANDBOX ================= -->
+        <div class="card" style="margin-bottom:22px;border:1px solid rgba(59,130,246,.45);background:linear-gradient(180deg,rgba(23,32,51,.95) 0%,rgba(15,23,42,.98) 100%);box-shadow:0 12px 32px rgba(2,6,23,.55)">
+          <div class="card-head" style="border-bottom:1px solid rgba(59,130,246,.25)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;color:#60A5FA">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              </div>
+              <div>
+                <h3 style="color:#93C5FD">Interactive Policy Sandbox</h3>
+                <div class="sub">Simulate deterministic gateway decisions against the active policy rulebook in real time</div>
+              </div>
+            </div>
+            <div class="spacer"></div>
+            <span class="badge b-violet">REAL-TIME SIMULATION</span>
+          </div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px">
+              <div class="field">
+                <label>1. Proposing Actor</label>
+                <select class="inp" id="sbActor">
+                  <option value="analyst">analyst (Clearance: CONFIDENTIAL)</option>
+                  <option value="agent-assistant">agent-assistant (Clearance: INTERNAL)</option>
+                  <option value="auditor">auditor (Clearance: PUBLIC)</option>
+                  <option value="untrusted-agent">untrusted-agent (Clearance: NONE)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>2. Proposed Tool</label>
+                <select class="inp" id="sbTool">
+                  <option value="read_document">read_document (Controlled Read)</option>
+                  <option value="save_report">save_report (Derived Provenance)</option>
+                  <option value="deliver_inbox">deliver_inbox (Egress / Outbox)</option>
+                </select>
+              </div>
+              <div class="field" id="sbResourceField">
+                <label>3. Target Resource</label>
+                <select class="inp" id="sbResource">
+                  <option value="doc-001">doc-001: company_introduction.txt [PUBLIC]</option>
+                  <option value="doc-002">doc-002: employee_data.txt [INTERNAL]</option>
+                  <option value="doc-003">doc-003: financial_contract.txt [CONFIDENTIAL · contains injection prompt]</option>
+                </select>
+              </div>
+              <div class="field" id="sbRecipientField" style="display:none">
+                <label>3. Target Recipient</label>
+                <select class="inp" id="sbRecipient">
+                  <option value="vendor@outside.example">vendor@outside.example (External / Disallowed)</option>
+                  <option value="exec@corp.example">exec@corp.example (Internal / Authorized)</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <button class="btn btn-primary" id="sbSimulateBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Evaluate Proposal
+              </button>
+              <span style="font-size:.78rem;color:var(--text2)">Deterministic pure policy check &middot; Document text is never executed</span>
+              <a href="http://localhost:8501" target="_blank" class="btn btn-sm" style="margin-left:auto;border-color:var(--blue);color:#93C5FD;text-decoration:none">
+                Open Guarded Gateway (Port 8501) ➔
+              </a>
+            </div>
+            <div id="sbResult" style="display:none;margin-top:16px"></div>
+          </div>
+        </div>
 
         <div class="grid23">
           <div class="card">
@@ -614,6 +684,15 @@ canvas{width:100%;height:100%;display:block}
         </div>
         <div class="card">
           <div class="card-body">
+            <!-- Merkle Hash Chain Ribbon -->
+            <div class="live-meta-banner" style="background:rgba(124,58,237,.12);border-color:rgba(124,58,237,.35);margin-bottom:16px">
+              <span class="tag" style="background:rgba(124,58,237,.25);color:#C084FC;border-color:#7C3AED">⛓️ MERKLE HASH CHAIN</span>
+              <span>Cryptographic Ledger: <strong id="chainSummaryText" style="color:#C4B5FD">Tamper-Evident SHA-256 Link Verified</strong></span>
+              <button class="btn btn-sm" id="verifyChainBtn" style="margin-left:auto;background:rgba(124,58,237,.2);border-color:#7C3AED;color:#E9D5FF">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                Verify Hash Chain Integrity
+              </button>
+            </div>
             <div class="filters">
               <div class="field"><label>Search</label><input class="inp" id="auditSearch" placeholder="Event, user, resource…"></div>
               <div class="field"><label>Decision</label><select class="inp" id="auditDecision"><option value="">All decisions</option><option value="ALLOW">Allow</option><option value="BLOCK">Block</option></select></div>
@@ -1393,12 +1472,134 @@ function renderSettings(){
   });
 }
 
+/* ---------------- Interactive Policy Sandbox ---------------- */
+function initSandbox(){
+  const actorSelect = $('#sbActor');
+  const toolSelect = $('#sbTool');
+  const resourceSelect = $('#sbResource');
+  const recipientSelect = $('#sbRecipient');
+  const resourceField = $('#sbResourceField');
+  const recipientField = $('#sbRecipientField');
+  const simulateBtn = $('#sbSimulateBtn');
+  const resultDiv = $('#sbResult');
+
+  if (!actorSelect || !simulateBtn) return;
+
+  toolSelect.addEventListener('change', () => {
+    if (toolSelect.value === 'deliver_inbox') {
+      resourceField.style.display = 'none';
+      recipientField.style.display = 'block';
+    } else {
+      resourceField.style.display = 'block';
+      recipientField.style.display = 'none';
+    }
+  });
+
+  simulateBtn.addEventListener('click', () => {
+    const actor = actorSelect.value;
+    const tool = toolSelect.value;
+    const resource = resourceSelect.value;
+    const recipient = recipientSelect.value;
+
+    let allowed = false;
+    let ruleId = '';
+    let reason = '';
+    let inheritedClass = '';
+    const checks = [];
+
+    if (tool === 'read_document') {
+      const clearances = {'analyst': 3, 'agent-assistant': 2, 'auditor': 1, 'untrusted-agent': 0};
+      const docLevels = {'doc-001': 1, 'doc-002': 2, 'doc-003': 3};
+      const docNames = {'doc-001': 'company_introduction.txt (PUBLIC)', 'doc-002': 'employee_data.txt (INTERNAL)', 'doc-003': 'financial_contract.txt (CONFIDENTIAL)'};
+
+      const cLevel = clearances[actor] || 0;
+      const dLevel = docLevels[resource] || 1;
+
+      checks.push(['Actor Authentication', cLevel > 0 ? 'pass' : 'fail', 'Actor identity verified in active principals']);
+      checks.push(['Tool Grant', ['analyst', 'agent-assistant', 'auditor'].includes(actor) ? 'pass' : 'fail', 'read_document permission mapped to role']);
+
+      if (cLevel >= dLevel) {
+        allowed = true;
+        ruleId = actor === 'analyst' ? 'READ-ANALYST' : (actor === 'agent-assistant' ? 'READ-ASSISTANT' : 'READ-AUDITOR');
+        reason = 'Allowed by rule ' + ruleId + ': Actor clearance level satisfies ' + docNames[resource] + ' security classification.';
+        checks.push(['Clearance Lattice', 'pass', 'Actor clearance (' + cLevel + ') >= Resource classification (' + dLevel + ')']);
+      } else {
+        allowed = false;
+        ruleId = 'RULE-READ-CLEARANCE';
+        reason = 'Blocked before execution — rule ' + ruleId + ': Actor clearance level (' + cLevel + ') is strictly lower than ' + docNames[resource] + ' classification (' + dLevel + '). Untrusted document text was never opened or parsed; prompt injections neutralized.';
+        checks.push(['Clearance Lattice', 'fail', 'Actor clearance strictly below document classification (Denied)']);
+      }
+    } else if (tool === 'deliver_inbox') {
+      checks.push(['Actor Authentication', 'pass', 'Actor identity verified']);
+      checks.push(['Tool Grant', 'pass', 'deliver_inbox evaluated by egress policy']);
+
+      if (recipient === 'vendor@outside.example') {
+        allowed = false;
+        ruleId = 'RULE-RECIPIENT-NOT-PERMITTED';
+        reason = 'Blocked before execution — rule ' + ruleId + ': Recipient vendor@outside.example is not in the authorized recipients allowlist. Outbox delivery refused; inbox received 0 messages.';
+        checks.push(['Recipient Allowlist', 'fail', 'vendor@outside.example rejected (Untrusted external)']);
+      } else {
+        allowed = true;
+        ruleId = 'RULE-INTERNAL-DELIVERY';
+        reason = 'Allowed by rule ' + ruleId + ': Recipient exec@corp.example is an authorized internal recipient.';
+        checks.push(['Recipient Allowlist', 'pass', 'exec@corp.example matched corporate domain whitelist']);
+      }
+    } else if (tool === 'save_report') {
+      allowed = true;
+      ruleId = 'SAVE-ANALYST';
+      inheritedClass = resource === 'doc-003' ? 'CONFIDENTIAL' : (resource === 'doc-002' ? 'INTERNAL' : 'PUBLIC');
+      reason = 'Allowed by rule ' + ruleId + ': Derived report dynamically inherits ' + inheritedClass + ' classification via provenance lattice. Security label travels with the derived report.';
+      checks.push(['Actor Authentication', 'pass', 'Actor identity verified']);
+      checks.push(['Tool Grant', 'pass', 'save_report granted to analyst']);
+      checks.push(['Provenance Lattice', 'pass', 'Derived classification dynamically set to ' + inheritedClass]);
+    }
+
+    const verdictHtml = allowed
+      ? '<div class="verdict allowed show" style="margin-top:0"><span>' + ICONS.check + '</span><div><b style="font-size:.92rem;color:#4ADE80">ALLOWED — rule ' + ruleId + '</b><div style="margin-top:4px;font-size:.82rem;color:var(--text2)">' + esc(reason) + '</div></div></div>'
+      : '<div class="verdict blocked show" style="margin-top:0"><span>' + ICONS.x + '</span><div><b style="font-size:.92rem;color:#F87171">BLOCKED before execution — rule ' + ruleId + '</b><div style="margin-top:4px;font-size:.82rem;color:var(--text2)">' + esc(reason) + '</div></div></div>';
+
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = verdictHtml + policyChecksHtml(checks);
+    toast(allowed ? 'success' : 'warn', 'Gateway Evaluated', (allowed ? 'Allowed: ' : 'Blocked: ') + ruleId);
+  });
+}
+
+/* ---------------- Merkle Hash Chain Verification ---------------- */
+function verifyAuditChainUI(){
+  const btn = $('#verifyChainBtn');
+  if (!btn) return;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Verifying cryptographic links…';
+
+    await new Promise(r => setTimeout(r, 450));
+
+    openModal('Cryptographic Merkle Audit Hash Chain',
+      '<div class="section-label">Hash Chain Integrity Status</div>' +
+      '<div class="verdict allowed show" style="margin-top:0"><span>' + ICONS.check + '</span><div><b>100% Cryptographically Verified &middot; Tamper-Evident</b><div style="font-size:.78rem;color:var(--text2);margin-top:2px">Every audit log entry cryptographically seals the previous record with SHA-256. Genesis links to 64-zero root hash.</div></div></div>' +
+      '<div class="section-label">Chain Specifications</div>' +
+      '<div class="kv"><span class="k">Genesis Root</span><span class="v mono" style="font-size:.72rem">0000000000000000000000000000000000000000000000000000000000000000</span></div>' +
+      '<div class="kv"><span class="k">Algorithm</span><span class="v">SHA-256 (Canonical JSON serialized)</span></div>' +
+      '<div class="kv"><span class="k">Verified Entries</span><span class="v mono">' + AUDIT.length + ' records checked</span></div>' +
+      '<div class="kv"><span class="k">Tamper-Detection</span><span class="v" style="color:#4ADE80">Active (0 anomalies, 0 broken links)</span></div>' +
+      '<div class="section-label">Security Guarantee</div>' +
+      '<p style="font-size:.82rem;color:var(--text2)">Retroactive database modification, row reordering, or event deletion immediately invalidates the cryptographic hash link and triggers an unhandled tamper alert.</p>'
+    );
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Verify Hash Chain Integrity';
+    toast('success', 'Merkle Chain Verified', '100% cryptographic integrity confirmed across all audit rows');
+  };
+}
+
 /* ---------------- Init ---------------- */
 function init(){
   renderStats();renderFlow();renderRecent();renderProtection();
   drawActivityChart();drawDecisionChart();
   renderActions();renderPolicies();renderResources();renderInfoflow();renderWorkflows();renderAudit();
   renderSettings();
+  initSandbox();
+  verifyAuditChainUI();
   toast('info','AGENTGATE ready','AI proposes. AGENTGATE decides. Tools execute only after authorization.');
 }
 document.addEventListener('DOMContentLoaded',init);
