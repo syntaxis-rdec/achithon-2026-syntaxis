@@ -19,7 +19,8 @@ from pathlib import Path
 from agentgate import tools
 from agentgate.policy_guard import fingerprint
 
-from .attacks import ATTACKS, LIVE_FINDINGS, POLICIES, PRINCIPALS, Arena
+from .attacks import (ATTACKS, LIVE_FINDINGS, PINNED_ATTACKS, POLICIES, PRINCIPALS,
+                       Arena)
 
 HERE = Path(__file__).resolve().parent
 
@@ -29,7 +30,7 @@ def run_all() -> dict:
     for attack in ATTACKS:
         with tempfile.TemporaryDirectory(prefix="agentgate-arena-", ignore_cleanup_errors=True) as tmp:
             tools.reset_executions()
-            arena = Arena(Path(tmp))
+            arena = Arena(Path(tmp), pin_documents=attack.__name__ in PINNED_ATTACKS)
             try:
                 result = attack(arena)
             finally:

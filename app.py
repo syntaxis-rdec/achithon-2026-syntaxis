@@ -70,12 +70,17 @@ state, policies = world()
 # rulebook and watch the next click use it" stays exactly as scripted, and the guard still
 # covers any session that outlives a rerun, which is what an agent runtime does.
 PIN_RULEBOOK = os.environ.get("AGENTGATE_PIN_RULEBOOK", "") == "1"
+# Pinning the document *set* as well catches a document minted after the pin, which per-document
+# fingerprints cannot see. Off by default: the tamper demo edits a document on purpose, and that
+# edit would then refuse the whole run instead of showing RULE-DOC-INTEGRITY.
+PIN_DOCUMENTS = os.environ.get("AGENTGATE_PIN_DOCUMENTS", "") == "1"
 
 if PIN_RULEBOOK and "guard" in st.session_state:
     guard: Guard = st.session_state["guard"]
     adopted: PolicySet = st.session_state["pinned_policies"]
 else:
-    guard = Guard(PRINCIPALS, POLICIES_FILE, token=RELOAD_TOKEN)
+    guard = Guard(PRINCIPALS, POLICIES_FILE, token=RELOAD_TOKEN,
+                documents_path=DOCS_DIR if PIN_DOCUMENTS else None)
     adopted = policies
     if PIN_RULEBOOK:
         st.session_state["guard"] = guard
@@ -189,13 +194,16 @@ with st.expander("👉 Evaluator & Judge Quick-Start Guide (Click to expand)"):
 
 if not PIN_RULEBOOK:
     st.caption("Rulebook pin · off · `AGENTGATE_PIN_RULEBOOK=1` refuses a rulebook swapped "
-               "between clicks until an operator adopts it")
+               "between clicks until an operator adopts it; `AGENTGATE_PIN_DOCUMENTS=1` also pins "
+               "the document set, so a minted document is refused")
 elif drift is None:
     st.caption(f"Rulebook integrity · pinned `{guard.recorded}` · re-checked before every decision")
 else:
     st.error(
-        f"Rulebook drift · pinned `{drift.expected}`, on disk `{drift.found}`. Every action is "
-        "denied under `RULE-POLICY-DRIFT` and audited until an operator reloads."
+        f"{drift.kind.title()} drift · pinned `{drift.expected}`, on disk `{drift.found}`. Every "
+        "action is denied under "
+        f"`{'RULE-DOCUMENT-DRIFT' if drift.kind == 'documents' else 'RULE-POLICY-DRIFT'}` and "
+        "audited until an operator reloads."
     )
     with st.form("reload_rulebook"):
         token = st.text_input("Operator reload token", type="password")
