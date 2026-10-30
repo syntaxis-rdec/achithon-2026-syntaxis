@@ -113,6 +113,15 @@ def test_a_permitted_workflow_runs_to_completion_with_one_effect_per_step(state)
     assert len(state.list_outbox()) == 1
 
 
+def test_a_step_only_ever_holds_one_of_the_four_statuses(state):
+    wf = workflow.create(state, _read_save_send(), title="statuses")
+    assert [s["status"] for s in state.steps_for(wf)] == ["pending", "pending", "pending"]
+    workflow.resume(state, wf, PRINCIPALS, POLICIES)
+    assert [s["status"] for s in state.steps_for(wf)] == ["done", "done", "done"]
+    with pytest.raises(ValueError):
+        state.set_step(wf, 0, "skipped")
+
+
 def test_blocked_steps_never_call_a_tool(state, tmp_path):
     rules = _rulebook(tmp_path)
     _edit_rule(rules, "SEND-ANALYST", max_classification="PUBLIC")

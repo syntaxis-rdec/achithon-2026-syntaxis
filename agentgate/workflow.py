@@ -27,19 +27,14 @@ from .gateway import Session
 from .models import ActionRequest
 from .policy import load_policy_set
 
-STATUSES = ("pending", "done", "blocked", "halted")
 
-
-def create(state, steps: list[ActionRequest], title: str = "workflow",
-           workflow_id: str | None = None) -> str:
+def create(state, steps: list[ActionRequest], title: str = "workflow") -> str:
     """Store an ordered list of proposals. No policy is consulted until a run."""
-    requests = [step.model_dump() if isinstance(step, ActionRequest) else dict(step)
-                for step in steps]
-    if not requests:
+    if not steps:
         raise ValueError("a workflow needs at least one step")
-    wf = workflow_id or "wf-" + uuid.uuid4().hex[:8]
-    state.save_workflow(wf, "active", {"title": title, "step_count": len(requests)})
-    state.add_steps(wf, requests)
+    wf = "wf-" + uuid.uuid4().hex[:8]
+    state.save_workflow(wf, "active", {"title": title, "step_count": len(steps)})
+    state.add_steps(wf, [step.model_dump() for step in steps])
     return wf
 
 
@@ -88,18 +83,20 @@ def resume(state, workflow_id: str, principals_path: str | Path,
             state.set_step(workflow_id, step["idx"], "done", decision.reason, output)
             outputs[step["idx"]] = output
             report["steps"].append(_row(step["idx"], describe(step), request.tool, "done",
-                                        decision.rule_id, decision.reason, True))
+                                        decision.rule_id, decision.reason, allowed=True))
             continue
 
         state.set_step(workflow_id, step["idx"], "blocked", decision.reason)
         report["steps"].append(_row(step["idx"], describe(step), request.tool, "blocked",
-                                    decision.rule_id, decision.reason, False))
+                                    decision.rule_id, decision.reason, allowed=False))
         for later in steps[position + 1:]:
+            if later["status"] == "done":
+                continue  # it ran on an earlier pass; never claim it did not
             reason = f"Not run: step {step['idx']} was blocked."
             state.set_step(workflow_id, later["idx"], "halted", reason)
             report["steps"].append(_row(later["idx"], describe(later),
                                         ActionRequest(**later["request"]).tool, "halted",
-                                        "WORKFLOW-HALTED", reason, False))
+                                        "WORKFLOW-HALTED", reason, allowed=False))
         report["status"] = "halted"
         state.save_workflow(workflow_id, "halted", payload)
         return report

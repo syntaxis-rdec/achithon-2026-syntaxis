@@ -40,7 +40,7 @@ Then open the local URL Streamlit prints. Full walkthrough: [docs/RUN.md](docs/R
 ```bash
 python -m benchmark.runner      # 32 frozen scenarios → benchmark/results.json
 python -m benchmark.mutations   # breaks the gateway six ways; every break must be detected
-pytest                          # 41 tests
+pytest                          # 42 tests
 ```
 
 Current result: **32/32 scenarios matched, 0 unauthorized executions, 0 false allows, 0 false denies,
@@ -83,6 +83,9 @@ log.txt       append-only agent session log required by the repository rules
 - The trust boundary is this Python process: anyone who can edit the SQLite file or the policy JSON can change
   the outcome. The tamper check catches document edits, not deliberate edits to `data/policies.json`.
 - The inbox is a SQLite table, not email.
+- A delivery is keyed to its workflow step, so a retried step cannot double-send. A report has no natural
+  key, so a crash exactly between a `save_report` step and its status write can leave an orphan report
+  behind when that step retries; the workflow then points at the newer one.
 - Declassification lowers labels only; upward correction is out of scope.
 
 ## Team

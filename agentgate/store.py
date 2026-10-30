@@ -56,6 +56,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS outbox_effect_key
 """
 
 VALID = ("PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED")
+STEP_STATUSES = ("pending", "done", "blocked", "halted")
 
 
 def now() -> str:
@@ -260,6 +261,8 @@ class Store:
     def set_step(self, workflow_id: str, idx: int, status: str, reason: str = "",
                  output: str | None = None) -> None:
         """Record where a step ended. `output` keeps an id a later step may reference."""
+        if status not in STEP_STATUSES:
+            raise ValueError(f"unknown step status '{status}', expected one of {STEP_STATUSES}")
         if output is None:
             self.conn.execute(
                 "UPDATE workflow_steps SET status=?, reason=? WHERE workflow_id=? AND idx=?",
