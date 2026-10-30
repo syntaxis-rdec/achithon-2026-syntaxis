@@ -59,9 +59,21 @@ def _chain(request: ActionRequest, outputs: dict[int, str]) -> ActionRequest:
 
 
 def resume(state, workflow_id: str, principals_path: str | Path,
-           policies_path: str | Path) -> dict[str, Any]:
-    """Run the workflow from the first step that is not done."""
-    policies = load_policy_set(principals_path, policies_path)
+           policies_path: str | Path, guard=None, token: str | None = None) -> dict[str, Any]:
+    """Run the workflow from the first step that is not done.
+
+    If a policy guard is supplied, a rulebook that moved since the pin refuses the run
+    unless the operator's reload token is presented. Resume is a decision point like any
+    other; it must not be a way to adopt a rulebook nobody approved.
+    """
+    if guard is not None:
+        if token is not None:
+            policies = guard.reload(token)
+        else:
+            guard.check()
+            policies = load_policy_set(principals_path, policies_path)
+    else:
+        policies = load_policy_set(principals_path, policies_path)
     steps = state.steps_for(workflow_id)
     payload = state.get_workflow(workflow_id)["payload"]
     outputs = {step["idx"]: step["output"] for step in steps}

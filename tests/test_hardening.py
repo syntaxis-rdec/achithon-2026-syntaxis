@@ -166,3 +166,38 @@ def test_registry_refresh_applies_new_rules_without_restart(registry, tmp_path):
     denied, _ = session.submit(ActionRequest(tool="read_document", resource_id="doc-001"))
     assert not denied.allowed
     assert denied.rule_id == "RULE-READ-CLEARANCE"
+
+
+def test_tools_refuse_direct_calls(state):
+    with pytest.raises(PermissionError):
+        tools.read_document("intern", "doc-001", state)
+    with pytest.raises(PermissionError):
+        tools.deliver_inbox("intern", "x", "vendor@outside.example", state)
+
+
+def test_resume_refuses_a_rulebook_swapped_since_the_pin(tmp_path, state):
+    """Live finding from the red team: resume must not adopt a rulebook nobody approved."""
+    from agentgate import workflow
+    from agentgate.policy_guard import Guard, PolicyDrift
+
+    principals = tmp_path / "principals.json"
+    principals.write_text((ROOT / "data" / "principals.json").read_text(), encoding="utf-8")
+    rules = tmp_path / "policies.json"
+    rules.write_text((ROOT / "data" / "policies.json").read_text(), encoding="utf-8")
+    guard = Guard(principals, rules, token="operator-token")
+
+    wf = workflow.create(state, [ActionRequest(actor_id="analyst", tool="read_document",
+                                               resource_id="doc-004")])
+    swapped = json.loads(rules.read_text())
+    for rule in swapped:
+        if rule["id"] == "SEND-ANALYST":
+            rule["max_classification"] = "PUBLIC"
+    rules.write_text(json.dumps(swapped), encoding="utf-8")
+
+    with pytest.raises(PolicyDrift):
+        workflow.resume(state, wf, principals, rules, guard=guard)
+    assert tools.EXECUTIONS == []
+
+    report = workflow.resume(state, wf, principals, rules, guard=guard, token="operator-token")
+    assert report["status"] == "completed"
+    assert guard.reloads and guard.reloads[0][0] != guard.reloads[0][1]

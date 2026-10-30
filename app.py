@@ -340,8 +340,9 @@ with viewer:
             st.warning("Resume is closed while the rulebook on disk differs from the pin. "
                        "Reload with the operator token first.")
         if st.button("Resume", key="wf_resume", disabled=drift is not None):
-            st.session_state["wf_report"] = workflow.resume(state, chosen, PRINCIPALS,
-                                                            POLICIES_FILE)
+            st.session_state["wf_report"] = workflow.resume(
+                state, chosen, PRINCIPALS, POLICIES_FILE,
+                guard=guard if PIN_RULEBOOK else None)
             st.rerun()
 
         result = st.session_state.get("wf_report")
