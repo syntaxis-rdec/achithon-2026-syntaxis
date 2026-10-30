@@ -747,3 +747,42 @@ branch=main
 repo_root=C:\Users\Tanush Garg\Documents\Qoder\2026-10-29\376c904f\team-9-11
 worktree=main
 parent_agent=none
+
+## [2026-10-30T20:03:38+05:30] Task 3 delivered: one command rehearses the whole stage demo and names the beat that breaks
+
+User Prompt (verbatim, secrets redacted):
+"MASTER EXECUTION PROMPT — MAKHDUM TASK-3 + PREVIOUS WORK AUDIT + COMPLETE DELIVERY ... I want a fully
+working, tested, documented, merge-ready result."
+
+Agent Response Summary:
+Merged main first (proposer work, demo seeder, swap tool and the existing beat tests), then built
+demo/rehearse.py and tests/test_rehearsal.py. The rehearsal seeds a scratch world with demo/seed.py and
+drives all twelve beats of docs/DEMO_SCRIPT.md through app.py with AppTest, asserting each promised
+string and the numbers around it, timing every beat, and printing a table. It reuses the click driver
+from tests/test_demo_beats.py by path rather than duplicating it, and loads demo/swap_policy.py inside
+the run because that module captures AGENTGATE_DATA_DIR at import and loading it early would have
+edited the real rulebook. Two beats cannot be clicked and are labelled in the table: the terminal swap
+calls swap_policy's own swap(), and the evidence button is asserted on screen while its function runs
+with the write suppressed so benchmark/results.json is never touched. --break-rule removes one rule from
+the scratch copy only and the rehearsal names the failing beat. Clean run: 12/12 green in 5.8 s, exit 0.
+Broken run (SAVE-ANALYST removed): exit 1, beat 2, RULE-NO-GRANT, repository rulebook hash unchanged.
+Full pytest 204 passed 1 xfailed, the xfail being the pre-existing LF-2. Found and documented LF-3:
+docs/DEMO_SCRIPT.md quotes tightened fingerprint c0a7b0e1860531db but the app renders b76a1526a887e3d2,
+wrong since the file was introduced; the rehearsal reports it as a non-fatal warning on every run
+because the script is a protected file.
+
+Actions:
+* Merged origin/main into lane/makhdum (no conflicts)
+* Created demo/rehearse.py and tests/test_rehearsal.py
+* Ran python demo/rehearse.py (12/12, 5.8 s, exit 0), --break-rule SAVE-ANALYST (exit 1, beat 2),
+  --cut 60 (beats 1,2,3,4,7,8,9,12), pytest (204 passed, 1 xfailed), focused rehearsal tests (11 passed)
+* Wrote team/makhdum/REPORT-3.md with the captured clean and broken outputs
+* Committed a83b94c on lane/makhdum
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none
