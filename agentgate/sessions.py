@@ -40,8 +40,23 @@ class SessionRegistry:
         """The explicit door. Operator token in, new rulebook live for every session."""
         if self.guard is None:
             raise PermissionError("this registry has no policy guard to reload through")
-        policies = self.guard.reload(token)
+        previous = self.guard.recorded
+        try:
+            policies = self.guard.reload(token)
+        except PermissionError as exc:
+            self.state.record_audit(
+                actor="operator", origin="human", tool="reload_policy", resource=None,
+                recipient=None, allowed=False, rule_id="RULE-POLICY-RELOAD-REFUSED",
+                reason=f"Blocked: {exc} The pinned rulebook {previous} is still in force.",
+                label=None, policy_hash=previous)
+            raise
         self.refresh(policies)
+        self.state.record_audit(
+            actor="operator", origin="human", tool="reload_policy", resource=None,
+            recipient=None, allowed=True, rule_id="POLICY-RELOAD",
+            reason=(f"Allowed: the operator adopted the rulebook on disk. "
+                    f"Pin moved {previous} to {policies.fingerprint}."),
+            label=None, policy_hash=policies.fingerprint)
         return policies
 
     def clear(self) -> None:
