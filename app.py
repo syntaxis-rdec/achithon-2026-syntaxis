@@ -18,6 +18,7 @@ from database import (
     get_available_payments,
     confirm_allocation,
     get_allocation_history,
+    get_customer_reconciliation,
 )
 
 from validation import (
@@ -445,4 +446,50 @@ if allocation_history:
 
 else:
     st.info("No payment allocation history found.")
+
+
+st.divider()
+
+st.header("10. Customer-wise Reconciliation Dashboard")
+
+customer_data = get_customer_reconciliation()
+
+if customer_data:
+    customer_df = pd.DataFrame(customer_data)
+
+    # Summary metrics
+    total_customers = len(customer_df)
+    total_invoiced = customer_df["Total Invoiced"].sum()
+    total_allocated = customer_df["Total Allocated"].sum()
+    total_outstanding = customer_df["Outstanding Balance"].sum()
+
+    col1, col2 = st.columns(2)
+
+    col1.metric("Total Customers", total_customers)
+    col2.metric("Total Invoiced", f"₹{total_invoiced:,.2f}")
+
+    col3, col4 = st.columns(2)
+
+    col3.metric("Total Allocated", f"₹{total_allocated:,.2f}")
+    col4.metric("Outstanding Balance", f"₹{total_outstanding:,.2f}")
+
+    st.subheader("Customer Reconciliation Details")
+
+    st.dataframe(
+        customer_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    csv_data = customer_df.to_csv(index=False).encode("utf-8")
+
+    st.download_button(
+        label="Download Customer Reconciliation CSV",
+        data=csv_data,
+        file_name="customer_reconciliation.csv",
+        mime="text/csv"
+    )
+
+else:
+    st.info("No customer reconciliation data found.")
 
