@@ -32,6 +32,11 @@ REDACTION_PATTERNS = [
 
 REPLACEMENT = "[REDACTED]"
 
+# Not user text: the rulebook hash and the Merkle link hashes. A 64-character hex chain value matches
+# the "32+ hex" token shape, so redacting these would void the tamper-evidence the pack exists to
+# carry. They are kept verbatim; everything a person typed is still scanned.
+INTEGRITY_COLUMNS = frozenset({"policy_hash", "prev_hash", "entry_hash"})
+
 
 class Redactor:
     def __init__(self) -> None:
@@ -51,7 +56,7 @@ class Redactor:
     def redact_row(self, row: dict[str, Any]) -> dict[str, Any]:
         cleaned: dict[str, Any] = {}
         for k, v in row.items():
-            if isinstance(v, str):
+            if isinstance(v, str) and k not in INTEGRITY_COLUMNS:
                 cleaned[k] = self.redact_text(v)
             else:
                 cleaned[k] = v

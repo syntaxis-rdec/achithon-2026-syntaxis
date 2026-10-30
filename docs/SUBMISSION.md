@@ -62,7 +62,7 @@ Run all four verification commands before archiving:
    ```powershell
    .venv\Scripts\python.exe -m pytest
    ```
-   *Expected: 342 passed, 1 skipped, 0 failed.*
+   *Expected: 343 passed, 1 skipped, 0 failed.*
 
 2. **Automated Stage Demo Rehearsal:**
    ```powershell

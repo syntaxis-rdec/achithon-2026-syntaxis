@@ -291,6 +291,13 @@ template are canonical; only the bare-`eyJ` JWT redaction rule was ported from m
 - **The archive is tested** — `tests/test_packaging.py` builds a real zip, asserts the source is in it,
   asserts no `.sqlite`/`.pyc`/`.venv`/`.env` rides along, and that a planted token fails the build. The
   built archive is now git-ignored.
+- **The export was voiding the Merkle chain** — Tanush's audit hash chain stores 64-hex links in
+  `prev_hash`/`entry_hash`, which the 32+ hex redaction rule matched, so every exported pack went out
+  with its tamper-evidence replaced by `[REDACTED]`. Caught by running the CLI on a seeded database and
+  seeing "2 redactions" where there should be none. `INTEGRITY_COLUMNS` now exempts the three hash
+  columns (`policy_hash`, `prev_hash`, `entry_hash`); a test asserts the links survive byte-for-byte
+  *and* that a planted token in a justification still gets redacted. A fresh seeded export reports 0
+  redactions.
 - **The frozen table is guarded** — `tests/test_guarded_benchmark.py` replays all 32 scenarios through a
   pinned registry and requires the committed verdicts, then breaks the pin on purpose and requires
   `RULE-POLICY-DRIFT`. `benchmark/` itself is untouched.

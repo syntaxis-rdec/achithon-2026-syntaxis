@@ -1243,3 +1243,39 @@ tool=Antigravity
 problem_id=PS08
 branch=main
 repo_root=D:\Desktop\Project 9-11 Archithon\achithon-2026-syntaxis-team-9-11-
+
+## [2026-10-31T01:42:12+05:30] Export defect found and fixed: the redactor was voiding the Merkle chain
+
+User Prompt (verbatim, secrets redacted):
+"now tanush is doing frontend , now complete every other remaining task in depth and with accuracy while
+taking suggested things in account of devil's advocate , no suggestion's and neccesisity should remain ,
+there should be no error , and the app should be working ,the problem statement should satisfy and do
+merge them necessarily .what is necessary should be merged ."
+
+Agent Response Summary:
+Finished the remaining list and caught one live defect on the way. Merging main a third time (his live
+sync, policy sandbox and chain work in the web layer) left the read-only contract intact, so all web and
+HTTP tests still pass. Running the export CLI on a freshly seeded database reported 2 redactions where
+there should be none: the audit hash chain stores 64-hex links in prev_hash and entry_hash, and the
+32+ hex token rule was scrubbing them, so every evidence pack went out with its tamper-evidence replaced
+by [REDACTED]. INTEGRITY_COLUMNS now exempts policy_hash, prev_hash and entry_hash while everything a
+person typed is still scanned, and a test asserts both halves. Also merged his reader-guide edit from the
+patch branch so no branch holds work outside this lane. Measured after everything: 343 passed 1 skipped
+0 failed, red team 22/22 with no open findings, rehearsal 12/12, benchmark 32/32, mutations 6/6,
+submission archive builds at 102 files. A dry-run push to main was rejected as non-fast-forward because
+Tanush is committing there right now, so per the lane rules the consolidation stays on lane/makhdum,
+currently 0 behind main and ready for him to merge.
+
+Actions:
+* Merged origin/main (three times) and origin/tanushgargjanuary-bot-patch-1 into lane/makhdum
+* Fixed agentgate/export.py (INTEGRITY_COLUMNS) and added its regression test in tests/test_export.py
+* Ran pytest (343 passed, 1 skipped), export CLI (0 redactions on a seeded db), benchmark.runner, benchmark.mutations, python -m redteam, demo/rehearse.py, package_submission.py (102 files)
+* Updated README, docs/SUBMISSION.md, .github/workflows/ci.yml counts and team/makhdum/NOTES.md
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none

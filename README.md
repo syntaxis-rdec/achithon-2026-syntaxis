@@ -141,7 +141,7 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
 
 | Suite | Command | Coverage | Result |
 |---|---|---|---|
-| **Unit & Integration** | `pytest` | 343 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web, packaging, text-blindness | **342 passed, 1 skipped, 0 failed** |
+| **Unit & Integration** | `pytest` | 344 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web, packaging, text-blindness | **343 passed, 1 skipped, 0 failed** |
 | **Stage Rehearsal** | `python demo/rehearse.py` | 12 live demo beats headlessly driven via `AppTest` | **12/12 beats green in 5.0s** |
 >>>>>>> origin/main
 | **Scenario Benchmark** | `python -m benchmark.runner` | 32 frozen specification scenarios | **32/32 matched, 0 unauthorized** |

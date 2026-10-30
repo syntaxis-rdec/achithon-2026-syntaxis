@@ -200,3 +200,28 @@ def test_redactor_catches_a_bare_jwt(tmp_path: Path) -> None:
     assert "[REDACTED]" in cleaned
     assert "eyJhbGciOiJIUzI1NiJ9" not in cleaned
     assert redactor.count == 1
+
+
+def test_the_merkle_chain_survives_the_redactor(populated_store: Store, tmp_path: Path) -> None:
+    """A 64-hex chain link is the proof, not a secret: scrubbing it voids the evidence pack."""
+    # list_audit is newest-first, the export is sorted ascending: compare in one order.
+    store_rows = sorted(populated_store.list_audit(), key=lambda row: row.get("id", 0))
+    redactor = Redactor()
+    csv_path, json_path = export_audit(populated_store, tmp_path, redactor)
+
+    exported = json.loads(json_path.read_text(encoding="utf-8"))
+    for db_row, pack_row in zip(store_rows, exported):
+        if db_row.get("entry_hash"):
+            assert pack_row["entry_hash"] == db_row["entry_hash"], "chain link was altered"
+            assert len(pack_row["entry_hash"]) == 64
+        assert pack_row.get("prev_hash", "") == db_row.get("prev_hash", "")
+    # The fixture plants a token in a justification, so the redactor must still be firing --
+    # just not on the three columns that carry the proof.
+    assert "[REDACTED]" in json_path.read_text(encoding="utf-8")
+    for column in ("entry_hash", "prev_hash", "policy_hash"):
+        assert all("[REDACTED]" not in str(row.get(column, "")) for row in exported), column
+
+    planted = Redactor()
+    leaked = planted.redact_row({"reason": "key " + "sk-" + "Q" * 24, "entry_hash": "0" * 64})
+    assert leaked["reason"] == "key [REDACTED]"
+    assert leaked["entry_hash"] == "0" * 64, "the genesis link must stay intact"
