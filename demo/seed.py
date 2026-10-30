@@ -40,7 +40,9 @@ DEFAULT_DATA = ROOT / "data"
 # staged, because none of them was created by a click in front of the judge.
 STAGED_REPORT_SOURCES = ["doc-001"]
 WORKFLOW_DOC = "doc-004"          # INTERNAL: passes the default rulebook, fails the tight one
-WORKFLOW_RECIPIENT = "team@corp.example"
+# manager, not team: beat one reads doc-001, so by the time this workflow runs the analyst's
+# read history pushes the report to CONFIDENTIAL and team@corp.example could not receive it.
+WORKFLOW_RECIPIENT = "manager@corp.example"
 TITLES = {
     "run": "DEMO-A permitted run (read, save, deliver)",
     "tight": "DEMO-B same proposal, tightened rulebook",

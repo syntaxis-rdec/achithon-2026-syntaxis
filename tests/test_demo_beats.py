@@ -420,3 +420,80 @@ def test_staged_rulebook_swap_changes_exactly_one_value():
     assert changed == ["SAVE-ANALYST"], f"expected one rule to differ, got {changed}"
     assert tight[1]["max_classification"] == "PUBLIC"
     assert "DEMO CHANGE" in tight[1]["description"], "the swap must say what it changed"
+
+
+# -- full rehearsals: the order the script tells you to click in -------------
+#
+# These two are the real proof. The per-beat tests above each start from the seeded state and
+# re-do only the clicks their own beat needs; these follow docs/DEMO_SCRIPT.md from the first
+# click to the last with nothing skipped and nothing reordered, so a beat that quietly spoils a
+# later one fails here. It already earned that: the analyst's read history from beat 1 pushes
+# every later report to CONFIDENTIAL, which is what forced the workflow recipient to
+# manager@corp.example.
+
+
+def test_rehearsal_sixty_second_cut_clicks_through_in_order(stage: Dashboard):
+    """Script beats 1, 2, 3, 4, 7, 8, 9, 12 in that order."""
+    beat_authorized_read(stage)
+    assert stage.verdict() == f"ALLOWED {EM} rule READ-ANALYST"
+    assert stage.tool_counter() == 1
+
+    beat_inherit_label(stage)
+    assert stage.verdict() == f"ALLOWED {EM} rule SAVE-ANALYST"
+    assert stage.labels()[-1]["classification"] == "CONFIDENTIAL"
+
+    beat_block_outside(stage)
+    assert stage.verdict() == (f"BLOCKED before execution {EM} "
+                               "rule RULE-RECIPIENT-NOT-PERMITTED")
+    assert stage.delivered() == 0
+
+    beat_obey_injection(stage)
+    assert stage.verdict() == f"BLOCKED before execution {EM} rule RULE-READ-CLEARANCE"
+
+    beat_resume(stage, "run")
+    assert f"Ran to completion under `{DEFAULT_RULEBOOK}`" in stage.screen()
+    assert stage.delivered() == 1
+
+    swap(stage, "tighten")
+    assert stage.step_statuses("tight") == ["pending", "pending", "pending"]
+
+    beat_resume(stage, "tight")
+    assert f"Stopped at the first block under `{TIGHT_RULEBOOK}`" in stage.screen()
+    assert stage.step_statuses("tight") == ["done", "blocked", "halted"]
+    assert stage.delivered() == 1, "the block must have kept the message out of the inbox"
+    assert stage.tool_counter() == 6, "read, save, three on the permitted run, one more read"
+
+
+def test_rehearsal_extended_cut_clicks_through_in_order(stage: Dashboard):
+    """Script beats 1 to 12 in that order, including the release pair and the restore."""
+    beat_authorized_read(stage)
+    beat_inherit_label(stage)
+    beat_block_outside(stage)
+    beat_obey_injection(stage)
+
+    stage.choose("Actor", "analyst").click("Release")
+    assert "Refused: not a security officer." in stage.screen()
+    assert stage.audit_rows()[0]["rule_id"] == "RULE-DECLASSIFY-ROLE"
+
+    stage.choose("Actor", "security-officer").click("Release")
+    assert re.search(r"Created report-\w+ at PUBLIC\. Original untouched\.", stage.screen())
+
+    beat_resume(stage, "run")
+    assert stage.delivered() == 1
+
+    swap(stage, "tighten")
+    beat_resume(stage, "tight")
+    assert stage.step_statuses("tight") == ["done", "blocked", "halted"]
+
+    swap(stage, "restore")
+    beat_resume(stage, "tight")
+    assert f"Ran to completion under `{DEFAULT_RULEBOOK}`" in stage.screen()
+    assert stage.verdicts_for_step("tight", 1) == [(False, TIGHT_RULEBOOK),
+                                                   (True, DEFAULT_RULEBOOK)]
+    assert stage.delivered() == 2
+
+    beat_resume(stage, "run")
+    assert "Nothing was re-run" in stage.screen()
+    assert stage.delivered() == 2, "a finished workflow must not send a second message"
+
+    assert str([m.value for m in stage.at.metric][0]) == "32/32"
