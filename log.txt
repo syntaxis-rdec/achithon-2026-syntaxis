@@ -377,3 +377,34 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+
+## [2026-10-30T15:58:36+05:30] Injection pack hardened in-lane: property test plus committed mutation checks
+
+User Prompt (verbatim, secrets redacted):
+"start doing that tasks that cannot harm tanush main task or can be burndend"
+
+Agent Response Summary:
+Did only work that cannot collide with the main lane: everything is inside tests/test_injection.py and
+team/makhdum/NOTES.md. The pack went from 25 to 33 tests. Each classification is now run against five
+unrelated bodies (own payload, another pair's payload, neutral prose, and a body with an HTML comment
+plus a fake classification block), which turns the six sampled twins into the property they were
+standing in for. Two committed mutation checks break the engine on purpose with monkeypatch - a
+_check_read that obeys body text and a deliver_inbox that honours an address found in text - and
+require this pack to go red, so detection power is now reproducible instead of prose. Also reproduced
+a core defect outside this lane and reported it rather than touched it: an empty document body passes
+policy and then raises IndexError in tools.save_report after the ALLOW is recorded. Full suite 75
+passed, benchmark 32/32, all six mutations detected, benchmark/results.json restored after the run.
+
+Actions:
+* Edited tests/test_injection.py (test_labels_decide_and_text_never_does, two mutation checks, helpers)
+* Updated team/makhdum/NOTES.md: findings, requests incl. the empty-body defect, results, status
+* Ran pytest (75 passed), tests/test_injection.py (33), benchmark.runner, benchmark.mutations
+* Committed 9d65bb6 on lane/makhdum; restored benchmark/results.json
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none
