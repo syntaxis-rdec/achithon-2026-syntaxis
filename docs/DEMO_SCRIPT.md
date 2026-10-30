@@ -23,7 +23,7 @@ The rulebook you swap in at beat 8 (`demo/policies_tight.json`) is a pre-staged 
 editing. It is byte-identical to the committed rulebook except one number, and
 `test_staged_rulebook_swap_changes_exactly_one_value` fails if that stops being true.
 
-Fingerprints you will see: default `12a49fe3ae7fc597`, tightened `c0a7b0e1860531db`.
+Fingerprints you will see: default `12a49fe3ae7fc597`, tightened `b76a1526a887e3d2`.
 
 ## 60-second cut — beats 1, 2, 3, 4, 7, 8, 9, 12 (target 60–75 s)
 
