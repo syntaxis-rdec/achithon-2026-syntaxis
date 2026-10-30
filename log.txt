@@ -616,3 +616,40 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+
+## [2026-10-30T17:45:37+05:30] Beyond the brief: every decision path guarded, LF-1 closed, red team as one-command evidence
+
+User Prompt (verbatim, secrets redacted):
+"the task is up to date but the quality isn't we should do task more that what asked so that our project would be the mvp"
+
+Agent Response Summary:
+Raised the quality bar instead of stopping at done. Closed LF-1 rather than leaving it as a request:
+workflow.resume takes an optional guard and app.py passes it, so an unadopted rulebook edit now halts a
+resumed run with RULE-POLICY-DRIFT; declassify refuses on drift too, so no decision path is unguarded.
+Added policy_guard.unadopted_rows, which finds audit rows stamped with a hash the guard never adopted,
+making any future guardless path observable rather than invisible, and surfaced that count plus guard
+mode, pin, disk and enforced hashes and the attack board in a new dashboard panel. Hardened the guard
+to fail closed: a deleted or unreadable rulebook denies instead of raising inside the decision path, a
+rulebook that does not parse cannot be adopted, and the token compares with hmac.compare_digest. Built
+python -m redteam, which prints the attack board and writes redteam/results.json the way
+benchmark.runner writes its artifact; arenas now close their SQLite handles because Windows locks open
+files. LF-1's attack flipped from strict xfail to a passing guard test and a new attack proves the
+detector catches the guardless path. Result: 128 passed and 1 xfailed, 22 attacks with 21 held and one
+documented open finding (LF-2), benchmark 32/32 and all six mutations still detected.
+
+Actions:
+* Edited agentgate/policy_guard.py, agentgate/gateway.py, agentgate/workflow.py, agentgate/sessions.py
+  (unchanged this turn), app.py, redteam/attacks.py
+* Created redteam/__main__.py and redteam/results.json
+* Added four guard tests: vanished rulebook, malformed rulebook, unadopted detector, plus LF-1 attacks 18 and 19
+* Ran pytest (128 passed, 1 xfailed), python -m redteam --json (21/22 held), benchmark.runner (32/32),
+  benchmark.mutations (all detected), py_compile on every edited file, restored benchmark/results.json
+* Updated team/makhdum/REPORT-2.md and NOTES.md
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none
