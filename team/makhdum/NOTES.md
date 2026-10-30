@@ -152,7 +152,8 @@ trusted on sight (LF-2). Both are `xfail(strict)` in `tests/test_redteam.py`.
 
 - Commits `043f262` (guard + gateway), `088c85f` (dashboard gate), `d86ee28` (adopt/refuse audit
   trail + unit tests), `c035d48` (harness), `8789fcd` (report), `0e97818` (merge of main, app.py and
-  log.txt conflicts resolved), then the follow-up docs/test commit.
+  log.txt conflicts resolved), `dfc3cd0` (pinned-dashboard test and the merge decision write-up).
+  Any commit after `dfc3cd0` on this branch is notes-only.
 - `pytest` — **123 passed, 2 xfailed**. Every test that existed before this lane is green with its
   expectations unedited, including the 499 lines of `tests/test_demo_beats.py` merged from main.
 - `python -m benchmark.runner` — 32/32, 0 unauthorized, 0 false allows, 0 false denies.

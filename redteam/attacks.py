@@ -386,8 +386,8 @@ ATTACKS = [
     act_as_a_recipient,
     act_as_an_unknown_actor,
     forge_a_workflow_step_reference,
-    mint_a_forged_document,
     resume_ignores_the_policy_pin,
+    mint_a_forged_document,
 ]
 
 # Kept, not softened: documented in team/makhdum/REPORT-2.md as live findings and run under
