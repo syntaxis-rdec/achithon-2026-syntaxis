@@ -15,6 +15,7 @@ __pycache__/
 # Runtime state
 *.sqlite
 *.db
+*.zip
 data/outbox/
 data/demo_seed.json
 agent-trace/

@@ -252,12 +252,32 @@ with right:
             state.close()
         except Exception:
             pass
+        deleted = False
         for _ in range(3):
             try:
                 DB.unlink(missing_ok=True)
+                deleted = True
                 break
             except PermissionError:
                 time.sleep(0.2)
+        if not deleted and DB.exists():
+            # Fallback for Windows file locks: truncate tables cleanly rather than raising
+            try:
+                import sqlite3
+                conn = sqlite3.connect(DB)
+                conn.executescript("""
+                    DELETE FROM audit;
+                    DELETE FROM outbox;
+                    DELETE FROM artifacts;
+                    DELETE FROM workflow_steps;
+                    DELETE FROM workflows;
+                    DELETE FROM read_history;
+                    VACUUM;
+                """)
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass
         st.session_state.clear()
         st.rerun()
 

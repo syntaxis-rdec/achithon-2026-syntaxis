@@ -5,9 +5,9 @@ work lands, so neither lane edits `agentgate/` internals, `app.py`, or `benchmar
 
 | Person | Lane | Folder | Branch |
 |---|---|---|---|
-| Makhdum | Task 3: automated rehearsal of the full stage demo | `team/makhdum/` (`TASK-3.md`) | `lane/makhdum` |
-| Aryan | Unchanged since 17:27: static Flask mockup, unmerged, needs a decision | `team/aryan/` (`README.md`) | `lane/aryan` |
-| Tanush | Gateway, dashboard, evidence, resumption, AI proposer | `docs/`, `agentgate/`, `app.py` | `main`, `work/*` |
+| Makhdum | Task 1, 2, 3: injections, red-team, automated rehearsal | `team/makhdum/` | Merged into `main` |
+| Aryan | Audit export, secret redaction, submission packaging | `team/aryan/` | Merged into `main` |
+| Tanush | Gateway, dashboard, evidence, resumption, AI proposer | `docs/`, `agentgate/`, `app.py` | `main` |
 
 `main` belongs to Tanush. Never commit or push to `main`. Work only on your lane branch.
 

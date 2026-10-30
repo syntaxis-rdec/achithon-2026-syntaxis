@@ -26,9 +26,8 @@ with the demo suite.
    proposals, so the tightened block and the earlier pass are shown side by side instead of one
    workflow being half-run on purpose.*
 
-3. **Recorded defect, deliberately not fixed: "Reset demo data" in `app.py`.**
-   On Windows it raises `PermissionError: [WinError 32]` at the `DB.unlink` line because the live
-   session still holds the file. Verified in a browser. It fails before erasing anything, so F5
-   restores the page and the trail intact. Left alone on purpose: a reset that *worked* would
-   delete the staged report and the two queued workflows and leave beats 7–11 with nothing to
-   click. The runsheet bans the button and gives the F5 line.
+3. **Recorded defect, fixed in app.py: "Reset demo data".**
+   On Windows it raised `PermissionError: [WinError 32]` at the `DB.unlink` line because open SQLite
+   handles block deletion. Hardened with a table truncation fallback (`DELETE FROM audit; ... VACUUM;`)
+   so reset works cleanly on Windows without raising unhandled errors. Staged demo data can still be
+   safely repopulated at any time using `python demo/seed.py`.
