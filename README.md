@@ -6,7 +6,8 @@ An AI proposes a tool call. A separate, deterministic policy engine checks who i
 which resource, which recipient, and how sensitive the material is. Blocked actions never reach a tool and
 never touch the inbox. Every decision — allowed or blocked — is recorded with a plain-English reason.
 
-Built for **SYNTAXIS 2026 (Archithon), problem statement PS08**.
+Built for SYNTAXIS 2026 (Archithon). The problem statement is not stored in this repository; this is the
+solution only.
 
 ## Try it
 
