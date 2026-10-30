@@ -22,6 +22,7 @@ INCLUDED_DIRS = [
     "data",
     "demo",
     "docs",
+    "presentation",
     "redteam",
     "team",
     "tests",

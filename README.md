@@ -147,7 +147,18 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
 | **Mutation Testing** | `python -m benchmark.mutations` | 6 deliberate gateway corruptions (clearance, inheritance, allowlist, tamper, read history, audit) | **6/6 detected (100% sensitivity)** |
 | **Red Team Board** | `python -m redteam` | 22 real-world attack vectors (injections, role forgery, TOCTOU, drift) | **21/22 held, 1 open finding** |
 | **Audit Packager** | `python -m agentgate.export` | SQLite audit trail export to CSV/JSON with automated secret scrubbing | **Clean export, 0 leaked tokens** |
-| **Submission Validator** | `python package_submission.py` | Full repo hygiene check and zip creation | **Validated (86 files, 0.17MB)** |
+| **Submission Validator** | `python package_submission.py` | Full repo hygiene check and zip creation | **Validated (93 files, 0.24MB)** |
+
+---
+
+## Presentation & Pitch Assets
+
+Everything you need to deliver the 3-minute stage pitch or evaluate the system is ready in the repository:
+
+* **PowerPoint Deck**: [`presentation/AGENTGATE_Pitch_Deck.pptx`](file:///presentation/AGENTGATE_Pitch_Deck.pptx) — 7 widescreen 16:9 slides with high-contrast executive styling, system architecture diagrams, and empirical metrics.
+* **Browser-Based Interactive Deck**: [`presentation/index.html`](file:///presentation/index.html) — Zero-install web presentation. Double-click to open in Chrome/Edge, press **F** for fullscreen, arrow keys to advance slides, and includes live on-screen speaker talking points.
+* **Pitch Deck Script & Outline**: [`docs/PITCH_DECK.md`](file:///docs/PITCH_DECK.md) — Word-for-word 3-minute stage script and 5-slide outline.
+* **Judge Q&A Cheat Sheet**: [`docs/JUDGE_QA.md`](file:///docs/JUDGE_QA.md) — 10 critical judge questions with factual, verifiable answers.
 
 ---
 
@@ -167,6 +178,11 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
 │   ├── sessions.py               # Per-actor session contexts and read history persistence
 │   ├── store.py                  # SQLite database engine (audit, outbox, documents, workflows)
 │   └── tools.py                  # Protected tools (read_document, save_report, deliver_inbox)
+│
+├── presentation/                 # Stage Pitch Deck Deliverables
+│   ├── AGENTGATE_Pitch_Deck.pptx # Official PowerPoint presentation deck (16:9 widescreen)
+│   ├── index.html                # Interactive browser-based slide deck with speaker notes & fullscreen
+│   └── generate_deck.py          # Automated PPTX deck generation script
 │
 ├── app.py                        # Streamlit Interactive Stage Dashboard & Evidence Board
 │
