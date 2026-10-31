@@ -6,7 +6,9 @@ Windows PowerShell:
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-streamlit run app.py
+python demo/seed.py            # stage the demo: one report, two queued workflows
+python web/app.py              # terminal 1: evidence server on :5000 (the dashboard embeds it)
+streamlit run app.py           # terminal 2: the dashboard
 ```
 
 macOS / Linux:
@@ -14,7 +16,9 @@ macOS / Linux:
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-streamlit run app.py
+python demo/seed.py
+python web/app.py &            # terminal 1: evidence server on :5000
+streamlit run app.py           # terminal 2
 ```
 
 Tests:
@@ -23,7 +27,9 @@ Tests:
 pytest
 ```
 
-State lives in `data/agentgate-v3.sqlite`. **Reset demo data** in the dashboard clears it.
+Two processes, two ports. The evidence server prints the read-only view the dashboard embeds in its dark-mode panel; without it that panel is blank and everything else still works. `demo/seed.py` is what gives the workflow beats anything to click, and re-running it is how you reset state.
+
+State lives in `data/agentgate-v3.sqlite`. To reset it, stop the server and run `python demo/seed.py`; the in-page reset button is not reliable on Windows.
 
 ## What to try
 

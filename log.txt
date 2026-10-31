@@ -1417,3 +1417,31 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+
+## [2026-10-31T06:39:07+05:30] Presentability pass: truthful badge, two-process runbook, repaired runsheet
+
+User Prompt (verbatim, secrets redacted):
+"so everything thing is working and fully presentable ? how to use it ?"
+
+Agent Response Summary:
+Re-read the instructions a judge would follow and found three presentability defects. The dashboard
+banner claimed CANARY HONEYTOKENS: ARMED although canary has no call site outside its own module, so the
+badge now reads TESTED, NOT WIRED, matching the corrected README. The run guide started streamlit without
+the evidence server the dark panel embeds, and never ran demo/seed.py, so a fresh user saw a blank iframe
+and an empty workflow section; both commands are now in the quickstart with a note that state resets by
+re-seeding rather than by the unreliable in-page button. The runsheet still expected 83 tests and gained a
+pre-flight line to start the evidence server. Fixing the runsheet by shell heredoc corrupted web\app.py
+into web + a bell character; caught it by re-reading the file and repaired it with a script instead, then
+confirmed no control characters remain. Suite still 343 passed 1 skipped and the rehearsal still 12/12.
+
+Actions:
+* Edited app.py badge text, docs/RUN.md quickstart and reset note, docs/DEMO_RUNSHEET.md count and pre-flight
+* Re-ran pytest (343 passed, 1 skipped) and demo/rehearse.py (exit 0)
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none

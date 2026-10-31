@@ -164,8 +164,8 @@ st.markdown("""
     <span class="sec-badge sec-badge-green">🛡️ ZERO-AUTHORITY GATEWAY: ACTIVE</span>
     <span class="sec-badge sec-badge-cyan">📄 DOCUMENT TEXT: UNTRUSTED & UNPARSED</span>
     <span class="sec-badge sec-badge-purple">⛓️ MERKLE AUDIT CHAIN: TAMPER-EVIDENT</span>
-    <span class="sec-badge sec-badge-gold">🪤 CANARY HONEYTOKENS: ARMED</span>
-    <span class="sec-badge sec-badge-cyan">🌐 FLASK EVIDENCE SERVER: http://localhost:5000</span>
+    <span class="sec-badge sec-badge-gold">🪤 CANARY LIBRARY: TESTED, NOT WIRED</span>
+    <span class="sec-badge sec-badge-cyan">🌐 EVIDENCE SERVER: python web/app.py → :5000</span>
 </div>
 """, unsafe_allow_html=True)
 
