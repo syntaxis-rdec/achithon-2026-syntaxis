@@ -108,10 +108,7 @@ Use the submission URL stated by the selected challenge. Do not guess a URL or s
 - **Keep changes scoped.** Work on the selected PS and shared files only; do not bring assumptions or evaluation labels over from another problem.
 - **Retain trace integrity.** Preserve original structured session logs where practical. Redact only sensitive content, and do not include credentials or unrelated application data.
 
-## Contributing or adding problem details
-
-Before using this README as a public project page, replace the placeholder problem titles with the official titles and link each row to the correct participant-facing specification. Add only verified setup and submission information. Keep challenge-specific facts in the relevant `PS##/` folder rather than duplicating them as assumptions in shared instructions.
-
+https://docs.google.com/spreadsheets/d/1rR_57fziHbZ9Y87LX_kRSsH5epoifqbA3yqU5GVUqXU/edit?gid=0#gid=0
 ---
 
 <div align="center">
