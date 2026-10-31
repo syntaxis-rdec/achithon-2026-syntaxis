@@ -715,3 +715,110 @@ elif page == "Review queue":
                         st.error(str(exc))
 
 
+# -------------------- MANUAL ALLOCATION --------------------
+
+elif page == "Allocate payment":
+    hero(
+        "Allocate precisely.",
+        "Apply a payment in full or in part. Current balances "
+        "are checked again when the allocation is saved.",
+    )
+
+    invoice_options = {
+        item["invoice_db_id"]: item
+        for item in db.get_available_invoices()
+        if item["Remaining Balance"] > 0
+    }
+
+    payment_options = {
+        item["payment_db_id"]: item
+        for item in db.get_available_payments()
+        if item["Unallocated Amount"] > 0
+    }
+
+    if not invoice_options or not payment_options:
+        st.info(
+            "You need an outstanding invoice and an available payment."
+        )
+
+    else:
+        with st.container(border=True):
+            left, right = st.columns(2)
+
+            with left:
+                invoice_id = st.selectbox(
+                    "Invoice",
+                    list(invoice_options),
+                    format_func=lambda key: (
+                        f"{invoice_options[key]['Invoice ID']} · "
+                        f"{invoice_options[key]['Customer']}"
+                    ),
+                )
+
+            with right:
+                payment_id = st.selectbox(
+                    "Payment",
+                    list(payment_options),
+                    format_func=lambda key: (
+                        f"{payment_options[key]['Payment ID']} · "
+                        f"{payment_options[key]['Customer']}"
+                    ),
+                )
+
+            invoice = invoice_options[invoice_id]
+            payment = payment_options[payment_id]
+
+            maximum = min(
+                invoice["Remaining Balance"],
+                payment["Unallocated Amount"],
+            )
+
+            left, right = st.columns(2)
+            left.metric(
+                "Invoice balance",
+                money(invoice["Remaining Balance"]),
+            )
+            right.metric(
+                "Payment available",
+                money(payment["Unallocated Amount"]),
+            )
+
+            if str(invoice["Customer"]).strip().casefold() != (
+                str(payment["Customer"]).strip().casefold()
+            ):
+                st.warning(
+                    "Customer names differ. Verify the relationship."
+                )
+
+            with st.form(f"allocate_{invoice_id}_{payment_id}"):
+                amount = st.text_input(
+                    "Amount (₹)",
+                    value=f"{maximum:.2f}",
+                )
+
+                acknowledged = st.checkbox(
+                    "I verified the records and allocation amount."
+                )
+
+                submit = st.form_submit_button(
+                    "Confirm allocation",
+                    type="primary",
+                    use_container_width=True,
+                )
+
+                if submit:
+                    if not acknowledged:
+                        st.warning("Please confirm your review.")
+                    else:
+                        try:
+                            parsed = parse_money(amount)
+                            db.confirm_allocation(
+                                invoice_id,
+                                payment_id,
+                                str(parsed),
+                            )
+                            finish("Payment allocated successfully.")
+                        except Exception as exc:
+                            st.error(str(exc))
+
+
