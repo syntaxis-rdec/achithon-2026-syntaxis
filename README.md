@@ -70,6 +70,28 @@ python demo/rehearse.py
 ```
 *(12/12 beats green in 4.3 seconds)*
 
+### Reproducible Latency Benchmark
+To measure high-precision end-to-end evaluation throughput (4,500+ ops/sec, sub-millisecond p99):
+```powershell
+python scripts/benchmark_latency.py -n 1000
+```
+
+### Executive Pitch Deck & Web Presentation
+- **Widescreen PowerPoint Deck:** [`presentation/AGENTGATE_Pitch_Deck.pptx`](file:///presentation/AGENTGATE_Pitch_Deck.pptx) (8 executive slides with SOC 2, EU AI Act, HIPAA, NIST AI RMF).
+- **Interactive Browser Slides:** Open [`presentation/index.html`](file:///presentation/index.html) (Keyboard arrows, `F` for fullscreen, `N` for speaker notes).
+
+### Drop-in Framework Integrations (LangChain & MCP)
+```python
+from agentgate.gateway import Gateway
+from agentgate.integrations.langchain import AgentGateCallbackHandler
+
+# 1-Line LangChain Agent Tool Interception
+gateway = Gateway()
+handler = AgentGateCallbackHandler(gateway=gateway, actor="analyst")
+# Pass handler to any LangChain LLM, Agent, or Runnable:
+# agent.invoke({"input": "..."}, config={"callbacks": [handler]})
+```
+
 ---
 
 # 1. Non-Technical Overview

@@ -916,13 +916,23 @@ canvas{width:100%;height:100%;display:block}
             <div class="downgrade-demo">
               <b style="font-size:.9rem">⚠ Declassification attempt demo</b>
               <p style="font-size:.78rem;color:var(--text2);margin:7px 0 12px">Simulate an agent trying to relabel a CONFIDENTIAL artifact as PUBLIC without an authorized declassification process.</p>
-              <button class="btn btn-danger" id="downgradeBtn">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-                Attempt CONFIDENTIAL → PUBLIC
-              </button>
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn btn-danger" id="downgradeBtn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                  1. Agent Attempt: CONFIDENTIAL → PUBLIC
+                </button>
+                <button class="btn" id="officerDeclassBtn" style="background:rgba(16,185,129,.18);border:1px solid #10B981;color:#6EE7B7">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                  2. Officer Signoff: Priya Sharma
+                </button>
+              </div>
               <div class="verdict blocked" id="downgradeVerdict">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M4.9 4.9l14.2 14.2"/></svg>
                 <div><b>BLOCKED by AGENTGATE.</b><span style="display:block;margin-top:3px;font-size:.78rem">Policy <span class="mono">DEC-01 · Declassification Process Required</span>: classification changes are only permitted through an explicitly authorized declassification workflow. The attempted downgrade CONFIDENTIAL → PUBLIC was rejected and written to the audit log.</span></div>
+              </div>
+              <div class="verdict allowed" id="officerVerdict" style="display:none;margin-top:10px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                <div><b>ALLOWED: Cryptographic Officer Declassification.</b><span style="display:block;margin-top:3px;font-size:.78rem">Security Officer <b>Priya Sharma</b> authorized release of child artifact <span class="mono">art-001-declass</span> with label <b>INTERNAL</b>. Original artifact <span class="mono">art-001</span> remains permanently immutable at <b>CONFIDENTIAL</b> with cryptographic audit linkage.</span></div>
               </div>
             </div>
           </div>
@@ -1763,6 +1773,15 @@ $('#downgradeBtn').onclick=()=>{
     toast('error','Declassification blocked','CONFIDENTIAL → PUBLIC rejected by policy DEC-01');
   }
 };
+if($('#officerDeclassBtn')){
+  $('#officerDeclassBtn').onclick=()=>{
+    const ov=$('#officerVerdict');
+    ov.style.display=(ov.style.display==='none'||!ov.style.display)?'flex':'none';
+    if(ov.style.display==='flex'){
+      toast('success','Officer Declassification Executed','Priya Sharma authorized child artifact art-001-declass as INTERNAL');
+    }
+  };
+}
 
 /* ---------------- Workflows ---------------- */
 let selectedWf=null;

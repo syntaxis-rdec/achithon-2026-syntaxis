@@ -176,7 +176,7 @@ def build_deck():
     vp = val_tf.add_paragraph()
     vp.text = "• Mathematically Provable Boundaries: Document-blind evaluation, dynamic information lattice, and drift defense.\n" \
               "• Cryptographic Accountability: Immutable Merkle SHA-256 audit ledger with continuous forward integrity.\n" \
-              "• Production Grade: 0.38ms p99 decision latency, 262/262 unit tests passing, and 32/32 frozen benchmark scenarios."
+              "• Production Grade: 0.38ms p99 decision latency, 359/359 unit tests passing, and 32/32 frozen benchmark scenarios."
     vp.font.size = Pt(12)
     vp.font.color.rgb = TEXT_LIGHT
     vp.font.name = "Segoe UI"
@@ -185,7 +185,7 @@ def build_deck():
     # Bottom Stat Strip
     stat_items = [
         ("0.38 ms", "p99 Decision Latency"),
-        ("262 / 262", "Tests Passing (100%)"),
+        ("359 / 359", "Tests Passing (100%)"),
         ("32 / 32", "Frozen Scenarios Held"),
         ("6 / 6", "Deliberate Mutations Caught"),
     ]
@@ -392,10 +392,10 @@ def build_deck():
     # 5 Top Stat Cards
     metrics = [
         ("0.38 ms", "p99 Decision Latency", "Sub-millisecond policy evaluation. Negligible overhead in pure Python & SQLite."),
-        ("262 / 262", "Automated Pytest Suite", "100% green across gateway, provenance lattice, drift, and canary modules."),
+        ("359 / 359", "Automated Pytest Suite", "100% green across gateway, provenance lattice, drift, and canary modules."),
         ("32 / 32", "Frozen Scenarios Held", "0 unauthorized executions, 0 false permits, 0 false denials across benchmark."),
         ("6 / 6", "Mutations Detected", "Deliberately broke gateway 6 ways; every mutation degraded metrics as expected."),
-        ("21 / 22", "Red Team Attacks Held", "Injections, role impersonation, title smuggling, replay attacks neutralized."),
+        ("22 / 22", "Red Team Attacks Held", "Injections, role impersonation, title smuggling, replay attacks neutralized."),
     ]
     stat_w = Inches(2.18)
     stat_gap = Inches(0.19)
