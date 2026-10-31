@@ -78,6 +78,8 @@ def collect_files() -> list[Path]:
         for root, dirs, files in os.walk(dpath):
             dirs[:] = [d for d in dirs if d not in FORBIDDEN_DIR_NAMES]
             for file in files:
+                if file.startswith("~$"):
+                    continue
                 fpath = Path(root) / file
                 if fpath.suffix.lower() in FORBIDDEN_EXTENSIONS:
                     continue
@@ -88,6 +90,8 @@ def collect_files() -> list[Path]:
     if trace_dir.exists():
         for root, dirs, files in os.walk(trace_dir):
             for file in files:
+                if file.startswith("~$"):
+                    continue
                 fpath = Path(root) / file
                 if fpath.suffix.lower() not in FORBIDDEN_EXTENSIONS:
                     files_to_pack.append(fpath)

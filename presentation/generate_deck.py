@@ -397,8 +397,13 @@ def build_deck():
         p_d.font.size = Pt(11)
         p_d.font.color.rgb = TEXT_WHITE
 
-    prs.save(str(OUTPUT_FILE))
-    print(f"Successfully generated {OUTPUT_FILE}")
+    try:
+        prs.save(str(OUTPUT_FILE))
+        print(f"Successfully generated {OUTPUT_FILE}")
+    except PermissionError:
+        fallback = OUTPUT_FILE.parent / "AGENTGATE_Pitch_Deck_new.pptx"
+        prs.save(str(fallback))
+        print(f"Notice: {OUTPUT_FILE.name} is currently open in PowerPoint. Saved updated copy to {fallback.name}")
 
 
 if __name__ == "__main__":
