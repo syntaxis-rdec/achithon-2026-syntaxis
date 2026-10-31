@@ -132,28 +132,13 @@ def get_match_suggestions():
         """).fetchall()
 
 
-
 def save_invoices(df):
     from decimal import Decimal
 
     with get_connection() as conn:
-        existing_ids = {
-            row[0] for row in conn.execute(
-                "SELECT invoice_id FROM invoices"
-            ).fetchall()
-        }
-
         rows = []
-        skipped = 0
-        seen_ids = set()
 
         for _, row in df.iterrows():
-            invoice_id = str(row["invoice_id"]).strip()
-
-            if invoice_id in existing_ids or invoice_id in seen_ids:
-                skipped += 1
-                continue
-
             amount = Decimal(str(row["amount"])).quantize(
                 Decimal("0.01")
             )
@@ -161,53 +146,28 @@ def save_invoices(df):
             if not amount.is_finite() or amount <= 0:
                 raise ValueError("Invoice amount must be positive.")
 
-            if not invoice_id:
-                raise ValueError("Invoice ID cannot be empty.")
-
-            seen_ids.add(invoice_id)
-
             rows.append((
-                invoice_id,
+                str(row["invoice_id"]).strip(),
                 str(row["customer_name"]).strip(),
                 str(amount),
                 str(row["invoice_date"]),
                 str(row.get("reference", ""))
             ))
 
-        if rows:
-            conn.executemany("""
-                INSERT INTO invoices
-                (invoice_id, customer_name, amount, invoice_date, reference)
-                VALUES (?, ?, ?, ?, ?)
-            """, rows)
-
-        return {
-            "saved": len(rows),
-            "skipped": skipped
-        }
+        conn.executemany("""
+            INSERT INTO invoices
+            (invoice_id, customer_name, amount, invoice_date, reference)
+            VALUES (?, ?, ?, ?, ?)
+        """, rows)
 
 
 def save_payments(df):
     from decimal import Decimal
 
     with get_connection() as conn:
-        existing_ids = {
-            row[0] for row in conn.execute(
-                "SELECT payment_id FROM payments"
-            ).fetchall()
-        }
-
         rows = []
-        skipped = 0
-        seen_ids = set()
 
         for _, row in df.iterrows():
-            payment_id = str(row["payment_id"]).strip()
-
-            if payment_id in existing_ids or payment_id in seen_ids:
-                skipped += 1
-                continue
-
             amount = Decimal(str(row["amount"])).quantize(
                 Decimal("0.01")
             )
@@ -215,13 +175,8 @@ def save_payments(df):
             if not amount.is_finite() or amount <= 0:
                 raise ValueError("Payment amount must be positive.")
 
-            if not payment_id:
-                raise ValueError("Payment ID cannot be empty.")
-
-            seen_ids.add(payment_id)
-
             rows.append((
-                payment_id,
+                str(row["payment_id"]).strip(),
                 str(row.get("customer_name", "")).strip(),
                 str(amount),
                 str(row["payment_date"]),
@@ -229,18 +184,13 @@ def save_payments(df):
                 str(row.get("description", ""))
             ))
 
-        if rows:
-            conn.executemany("""
-                INSERT INTO payments
-                (payment_id, customer_name, amount, payment_date,
-                 reference, description)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, rows)
+        conn.executemany("""
+            INSERT INTO payments
+            (payment_id, customer_name, amount, payment_date,
+             reference, description)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, rows)
 
-        return {
-            "saved": len(rows),
-            "skipped": skipped
-        }
 
 def confirm_allocation(invoice_id, payment_id, amount):
     from decimal import Decimal, InvalidOperation
@@ -632,112 +582,6 @@ def get_available_payments():
                 break
 
     return report
-
-
-def get_allocation_history():
-    with get_connection() as conn:
-        rows = conn.execute("""
-            SELECT
-                a.id,
-                i.invoice_id,
-                i.customer_name,
-                p.payment_id,
-                a.allocated_amount,
-                a.confirmed_at
-            FROM allocations a
-            JOIN invoices i
-                ON a.invoice_id = i.id
-            JOIN payments p
-                ON a.payment_id = p.id
-            ORDER BY a.confirmed_at DESC, a.id DESC
-        """).fetchall()
-
-    history = []
-
-    for row in rows:
-        history.append({
-            "Allocation ID": row[0],
-            "Invoice ID": row[1],
-            "Customer": row[2],
-            "Payment ID": row[3],
-            "Allocated Amount": float(row[4]),
-            "Allocation Date": row[5]
-        })
-
-    return history
-
-
-def get_customer_reconciliation():
-    with get_connection() as conn:
-        customers = conn.execute("""
-            SELECT DISTINCT customer_name
-            FROM invoices
-            UNION
-            SELECT DISTINCT customer_name
-            FROM payments
-            ORDER BY customer_name
-        """).fetchall()
-
-        results = []
-
-        for row in customers:
-            customer = row[0]
-
-            invoices = conn.execute("""
-                SELECT id, amount
-                FROM invoices
-                WHERE customer_name = ?
-            """, (customer,)).fetchall()
-
-            payments = conn.execute("""
-                SELECT id, amount
-                FROM payments
-                WHERE customer_name = ?
-            """, (customer,)).fetchall()
-
-            total_invoiced = sum(
-                (Decimal(str(item[1])) for item in invoices),
-                Decimal("0")
-            )
-
-            total_received = sum(
-                (Decimal(str(item[1])) for item in payments),
-                Decimal("0")
-            )
-
-            # Count allocations only through the invoice customer.
-            # This prevents counting the same allocation twice.
-            allocated = conn.execute("""
-                SELECT COALESCE(SUM(CAST(a.allocated_amount AS NUMERIC)), 0)
-                FROM allocations a
-                JOIN invoices i ON a.invoice_id = i.id
-                WHERE i.customer_name = ?
-            """, (customer,)).fetchone()[0]
-
-            allocated = Decimal(str(allocated))
-
-            outstanding = total_invoiced - allocated
-
-            if outstanding < 0:
-                status = "Over-allocated - Review"
-            elif outstanding == 0:
-                status = "Fully Paid"
-            else:
-                status = "Outstanding"
-
-            results.append({
-                "Customer": customer,
-                "Total Invoiced": float(total_invoiced),
-                "Total Payments": float(total_received),
-                "Total Allocated": float(allocated),
-                "Outstanding Balance": float(outstanding),
-                "Status": status
-            })
-
-    return results
-
-
-    return results
 
 
 
