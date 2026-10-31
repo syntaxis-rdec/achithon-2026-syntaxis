@@ -24,7 +24,7 @@ INCLUDED_DIRS = [
     "docs",
     "presentation",
     "redteam",
-    "team",
+    "scripts",
     "tests",
     "web",
 ]
@@ -34,10 +34,14 @@ INCLUDED_FILES = [
     ".gitignore",
     "AGENTS.md",
     "app.py",
+    "LICENSE",
     "log.txt",
+    "pyproject.toml",
     "pytest.ini",
     "README.md",
+    "refine.py",
     "requirements.txt",
+    "SECURITY.md",
     "start.py",
 ]
 

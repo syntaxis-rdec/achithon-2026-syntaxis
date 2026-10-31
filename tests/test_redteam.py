@@ -43,8 +43,11 @@ def test_the_board_is_clean_without_losing_the_mechanism():
     """An empty list must be a fact about the code, not a deleted safety net."""
     assert LIVE_FINDINGS == []
     assert PINNED_ATTACKS <= set(RUNNERS)
-    closed = (Path(__file__).resolve().parent.parent / "team" / "makhdum" / "REPORT-2.md")
-    text = closed.read_text(encoding="utf-8")
+    root = Path(__file__).resolve().parent.parent
+    audit = root / "docs" / "SECURITY_AUDIT.md"
+    report = root / "team" / "makhdum" / "REPORT-2.md"
+    target = audit if audit.exists() else report
+    text = target.read_text(encoding="utf-8")
     for finding in ("LF-1", "LF-2"):
         assert finding in text, f"{finding} must still be written up, closed or not"
 

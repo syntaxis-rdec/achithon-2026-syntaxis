@@ -64,3 +64,13 @@ AGENTGATE enforces **three non-negotiable hard invariants** across all autonomou
 - **Measure (3.1)**: Continuous verification through 350 unit tests, 32 benchmark scenarios, and automated mutation testing.
 - **Manage (4.1)**: Deterministic policy gateway provides fail-safe defaults (fail-closed) when drift or tampering occurs.
 
+---
+
+## 4. Closed Live Findings (LF-1 & LF-2 Resolution)
+
+- **LF-1 (Rulebook Swap Drift)**: An unauthorized attacker alters `policies.json` or `principals.json` on disk mid-session.
+  - *Resolution*: Closed by `PolicyGuard.check()` fingerprinting active disk policies and immediately halting session execution with `PolicyDrift`.
+- **LF-2 (Minted Document Forgery Drift)**: An attacker drops a forged unpinned document (`doc-999-forged.md`) into `data/documents/` mid-session.
+  - *Resolution*: Closed by `documents_fingerprint()` tracking canonical directory hashes and halting untracked access with `RULE-DOCUMENT-DRIFT`.
+
+
