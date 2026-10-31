@@ -538,3 +538,83 @@ elif page == "Upload studio":
         )
 
 
+# -------------------- MATCHING --------------------
+
+elif page == "Matching engine":
+    hero(
+        "Find connections. Keep control.",
+        "Generate explainable suggestions with your current matching "
+        "engine. Nothing is allocated until you approve it.",
+    )
+
+    with st.container(border=True):
+        st.subheader("Generate suggestions")
+        st.caption(
+            "Reviewed suggestions keep their existing decision. "
+            "Pending pairs can have their scores refreshed."
+        )
+
+        if st.button(
+            "Run matching engine",
+            type="primary",
+            use_container_width=True,
+        ):
+            try:
+                with st.spinner("Analyzing your records..."):
+                    source_invoices, source_payments = (
+                        load_matching_data()
+                    )
+
+                    if source_invoices.empty or source_payments.empty:
+                        st.warning(
+                            "Upload invoices and payments first."
+                        )
+                    else:
+                        suggestions = suggest_matches(
+                            source_invoices,
+                            source_payments,
+                        )
+                        db.save_match_suggestions(suggestions)
+
+                        finish(
+                            f"Engine returned {len(suggestions):,} "
+                            "suggestions. Pending matches refreshed."
+                        )
+            except Exception as exc:
+                st.error(f"Matching failed: {exc}")
+
+    saved = db.get_match_suggestions()
+
+    if saved:
+        results = pd.DataFrame(
+            saved,
+            columns=[
+                "ID", "Invoice ID", "Payment ID",
+                "Score", "Explanation", "Status",
+            ],
+        )
+
+        left, right = st.columns([2, 1])
+
+        with left:
+            query = st.text_input("Search suggestions")
+
+        with right:
+            status = st.selectbox(
+                "Status",
+                ["All"] + sorted(
+                    results["Status"].astype(str).unique().tolist()
+                ),
+            )
+
+        filtered = filter_rows(results, query)
+
+        if status != "All":
+            filtered = filtered[filtered["Status"] == status]
+
+        table(filtered)
+
+    else:
+        st.info("No matching suggestions yet.")
+
+
