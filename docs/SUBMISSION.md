@@ -18,7 +18,7 @@ necessary to run, verify, and inspect the gateway:
 - `demo/` — stage seed script, policy swap utility, automated rehearsal engine (`rehearse.py`)
 - `data/` — documents, policies, evaluation injection documents
 - `docs/` — `RUN.md`, `DEMO_SCRIPT.md`, `DEMO_RUNSHEET.md`, `JUDGE_QA.md`, `PROPOSER.md`, `SUBMISSION.md`
-- `tests/` — complete test suite (263 passing, 1 documented xfail)
+- `tests/` — complete test suite (343 passing, 1 skipped, 0 failures)
 - `requirements.txt`, `pytest.ini`, `README.md`, `AGENTS.md`, `log.txt`
 - `agent-trace/PS08/<harness>/` — raw, redacted agent transcripts for auditability
 

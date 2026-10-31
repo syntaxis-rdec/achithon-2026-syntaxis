@@ -325,3 +325,46 @@ Tanush, and a security claim a judge can check in five minutes should not be lef
 - `python -m redteam` — **22/22 held, 0 open findings**; `redteam/results.json` regenerated.
 - `python demo/rehearse.py` — **12/12 beats**, exit 0, under 90 s.
 - `python -m benchmark.runner` 32/32 · `benchmark.mutations` 6/6 · `package_submission.py` builds.
+
+---
+
+# Final state (frozen)
+
+The project is finalised with two items deliberately **not** built, at the finder's instruction
+("finalize the project without the pending dashboard tasks"): the canary is not wired into the
+delivery step, and the proposer has no dashboard surface. Both are stated as such in `README.md`
+under Honest Limitations, both remain fully tested libraries, and neither is claimed as active.
+
+## What was measured on the frozen tree
+
+| Check | Result |
+|---|---|
+| `pytest` | **343 passed, 1 skipped, 0 failed** (344 collected; the skip is the live-findings parametrization with an empty list) |
+| `python -m benchmark.runner` | **32/32** matched, 0 unauthorized, 0 false allow/deny, 32/32 audit rows |
+| `python -m benchmark.mutations` | **6/6** breakages detected |
+| `python -m redteam` | **22/22** attacks held, **0 open findings** |
+| `python demo/rehearse.py` | **12/12** beats, exit 0, under 90 s |
+| `python -m agentgate.export` | four files, **0 redactions** on a seeded database, Merkle links intact |
+| `python package_submission.py` | archive builds, 102 files, no `.venv`/`.sqlite`/`.env` |
+| `tests/test_server_smoke.py` | Streamlit and the Flask evidence server both answer over real HTTP |
+| GitHub Actions | green on the lane's latest commits |
+
+## What the last pass fixed
+
+- **The export was destroying the audit chain.** 64-hex `prev_hash`/`entry_hash` matched the 32+ hex
+  redaction rule, so packs shipped with `[REDACTED]` where the tamper-evidence belonged.
+  `INTEGRITY_COLUMNS` exempts the three hash columns; a test requires both the surviving links and a
+  still-redacted planted token.
+- **README claimed the canary scanned outgoing proposals.** It does not appear in any call site.
+  The claim is corrected, with the wiring decision and its three possible outcomes named.
+- **Three count lines had drifted** (`docs/RUN.md`, `docs/SUBMISSION.md`, `team/README.md`) and now
+  match the measured 343/1-skip.
+
+## Ready to merge
+
+- Lane `lane/makhdum` is **0 commits behind `main`**; every merge from `main` is already in.
+- Last tested code state: `e961eaa` plus merges of `main`; commits after it are documentation only.
+- Merge on `main` with:
+  `git merge --no-ff origin/lane/makhdum && python -m pytest && gh workflow run evidence || git push origin main`
+  then confirm the `evidence` workflow passes on `main`.
+- Nothing is left half-done: no TODO, no failing test, no open finding, no untested deliverable.

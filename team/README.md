@@ -39,7 +39,7 @@ git merge origin/main            # never rebase, never force-push
   non-empty `tool=` line naming your exact harness. Never log secrets. Log conflicts are expected;
   keep both entries and commit the merge.
 - Run the test suite with `.venv\Scripts\python.exe -m pytest` (Windows) or `.venv/bin/python -m pytest`.
-  All existing tests must still pass before you commit. Baseline: **264 tests — 263 passing, 1 documented xfail**.
+  All existing tests must still pass before you commit. Baseline: **344 tests — 343 passing, 1 skipped, 0 failures**.
 - Own only your files. If you need a change in someone else's file, write it in your own `NOTES.md`
   under a `## Requests` heading and continue with a fallback.
 - Commit small, with `type: what works` messages. Never amend, never force-push, never reset.
