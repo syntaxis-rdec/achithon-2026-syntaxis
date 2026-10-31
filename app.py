@@ -505,3 +505,36 @@ if page == "Overview":
         else:
             st.info("No invoice records yet.")
 
+# -------------------- UPLOADS --------------------
+
+elif page == "Upload studio":
+    hero(
+        "Clean inputs. Confident results.",
+        "Validate your source files and inspect every upload "
+        "before it enters the reconciliation workflow.",
+    )
+
+    st.caption(
+        "CSV values are loaded as text to preserve IDs and references. "
+        "Your validation module should explicitly parse numeric/date fields."
+    )
+
+    left, right = st.columns(2)
+
+    with left:
+        upload_panel(
+            "Invoices",
+            INVOICE_COLUMNS,
+            db.save_invoices,
+            "invoice_upload",
+        )
+
+    with right:
+        upload_panel(
+            "Payments",
+            PAYMENT_COLUMNS,
+            db.save_payments,
+            "payment_upload",
+        )
+
+
