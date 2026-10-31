@@ -942,3 +942,38 @@ elif page == "Reports":
         table(get_invoice_age_report())
 
 
+# -------------------- ACTIVITY --------------------
+
+elif page == "Activity & checks":
+    hero(
+        "Make the workflow inspectable.",
+        "Review recorded decisions and run read-only "
+        "checks against your stored financial data.",
+    )
+
+    st.info(
+        "Activity starts when this upgrade is installed. "
+        "This is a local change log, not an authenticated, "
+        "tamper-proof compliance audit system."
+    )
+
+    with st.container(border=True):
+        st.subheader("Integrity diagnostics")
+
+        if st.button("Run integrity checks", type="primary"):
+            with st.spinner("Checking records..."):
+                issues = run_integrity_checks()
+
+            if issues:
+                for issue in issues:
+                    st.error(issue)
+            else:
+                st.success(
+                    "Checks passed: SQLite integrity, foreign keys, "
+                    "stored amount validity, and allocation limits."
+                )
+
+    st.subheader("Recent activity")
+    table(get_activity())
+
+
