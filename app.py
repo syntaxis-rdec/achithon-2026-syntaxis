@@ -147,3 +147,170 @@ h1, h2, h3 { letter-spacing: -.035em; }
 </style>
 """)
 
+
+# -------------------- HELPERS --------------------
+
+def hero(title, subtitle):
+    st.html(
+        f"""
+        <div class="hero">
+            <div class="eyebrow">RECONFLOW / INTELLIGENCE WORKSPACE</div>
+            <h1>{escape(title)}</h1>
+            <p>{escape(subtitle)}</p>
+        </div>
+        """
+    )
+
+
+def money(value):
+    return f"₹{float(value):,.2f}"
+
+
+def total(df, column):
+    if df.empty or column not in df:
+        return 0.0
+    return pd.to_numeric(
+        df[column], errors="coerce"
+    ).fillna(0).sum()
+
+
+def card(label, value, note):
+    st.html(
+        f"""
+        <div class="kpi">
+            <div class="kpi-label">{escape(label)}</div>
+            <div class="kpi-value">{escape(str(value))}</div>
+            <div class="kpi-note">{escape(note)}</div>
+        </div>
+        """
+    )
+
+
+def table(df):
+    st.dataframe(df, hide_index=True, use_container_width=True)
+
+
+def finish(message):
+    st.session_state["flash"] = str(message)
+    st.rerun()
+
+
+def chart(fig):
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#B9C5E2"),
+        margin=dict(l=10, r=10, t=30, b=10),
+        legend_title_text="",
+    )
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={"displaylogo": False},
+    )
+
+
+def filter_rows(df, query):
+    if df.empty or not query.strip():
+        return df
+
+    mask = df.astype(str).apply(
+        lambda col: col.str.contains(
+            query.strip(),
+            case=False,
+            regex=False,
+            na=False,
+        )
+    ).any(axis=1)
+
+    return df[mask]
+
+
+def upload_panel(title, required_columns, save_function, key):
+    with st.container(border=True):
+        st.subheader(title)
+        st.caption("Validate → preview → save")
+
+        with st.expander("Required columns"):
+            st.code(
+                ", ".join(map(str, required_columns)),
+                language=None,
+            )
+
+        uploaded = st.file_uploader(
+            "Choose a CSV",
+            type=["csv"],
+            key=key,
+        )
+
+        if uploaded is None:
+            st.info("Upload a file to begin.")
+            return
+
+        try:
+            # Preserve IDs such as INV-001 and leading-zero references.
+            df = pd.read_csv(uploaded, dtype=str).fillna("")
+            errors = validate_file(df, required_columns)
+
+            if errors:
+                for error in errors:
+                    st.error(str(error))
+                return
+
+            if df.empty:
+                st.warning("This file contains no records.")
+                return
+
+            st.success(f"{len(df):,} records passed validation.")
+            table(df)
+
+            if st.button(
+                f"Save {title.lower()}",
+                key=f"save_{key}",
+                type="primary",
+                use_container_width=True,
+            ):
+                try:
+                    save_function(df)
+                    finish(f"{len(df):,} {title.lower()} saved.")
+                except sqlite3.IntegrityError:
+                    st.error(
+                        "Upload rejected: duplicate IDs or another "
+                        "database constraint violation. "
+                        "No rows from this upload were committed."
+                    )
+                except Exception as exc:
+                    st.error(f"Save failed: {exc}")
+
+        except Exception as exc:
+            st.error(f"Could not read or validate this file: {exc}")
+
+
+def report_bundle(invoices, payments):
+    output = BytesIO()
+
+    with ZipFile(output, "w", ZIP_DEFLATED) as bundle:
+        bundle.writestr(
+            "invoice_balances.csv",
+            invoices.to_csv(index=False).encode("utf-8-sig"),
+        )
+        bundle.writestr(
+            "payment_reconciliation.csv",
+            payments.to_csv(index=False).encode("utf-8-sig"),
+        )
+        bundle.writestr(
+            "recent_activity.csv",
+            get_activity(1000).to_csv(
+                index=False
+            ).encode("utf-8-sig"),
+        )
+        bundle.writestr(
+            "README.txt",
+            "ReconFlow report bundle\n"
+            "Activity contains at most the latest 1000 events.\n"
+            "Activity logging starts when the upgrade is installed.\n"
+            "Invoice age is not an overdue calculation.\n",
+        )
+
+    return output.getvalue()
+
