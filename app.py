@@ -822,3 +822,73 @@ elif page == "Allocate payment":
                             st.error(str(exc))
 
 
+# -------------------- CUSTOMER EXPLORER --------------------
+
+elif page == "Customer explorer":
+    hero(
+        "See the customer behind the balance.",
+        "Explore invoices and recorded payments by customer name.",
+    )
+
+    names = set()
+
+    for df in (invoices, payments):
+        if not df.empty:
+            names.update(df["Customer"].fillna("").astype(str))
+
+    if not names:
+        st.info("Upload records to explore customers.")
+
+    else:
+        selected = st.selectbox("Customer", sorted(names))
+
+        customer_invoices = (
+            invoices[invoices["Customer"].fillna("").astype(str)
+                     == selected]
+            if not invoices.empty else invoices
+        )
+
+        customer_payments = (
+            payments[payments["Customer"].fillna("").astype(str)
+                     == selected]
+            if not payments.empty else payments
+        )
+
+        cols = st.columns(3)
+
+        with cols[0]:
+            card(
+                "INVOICED",
+                money(total(customer_invoices, "Original Amount")),
+                f"{len(customer_invoices):,} invoices",
+            )
+
+        with cols[1]:
+            card(
+                "OUTSTANDING",
+                money(total(customer_invoices, "Remaining Balance")),
+                "Customer invoice balance",
+            )
+
+        with cols[2]:
+            card(
+                "AVAILABLE PAYMENTS",
+                money(total(customer_payments, "Unallocated Amount")),
+                "Payments recorded under this name",
+            )
+
+        st.caption(
+            "Customer grouping uses exact stored names, not a verified "
+            "customer identity. Cross-customer allocations can cause "
+            "invoice and payment totals here to differ."
+        )
+
+        tab1, tab2 = st.tabs(["Invoices", "Payments"])
+
+        with tab1:
+            table(customer_invoices)
+
+        with tab2:
+            table(customer_payments)
+
+
