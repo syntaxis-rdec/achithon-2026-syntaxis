@@ -31,12 +31,13 @@ dashboard says that on the panel in front of the numbers. What makes 32/32 worth
 `python -m benchmark.mutations`: six deliberate breakages of the gateway, each of which must
 degrade a metric. All six are detected. About nine seconds.
 
-**5. What does the audit trail not prove?**
-It is a plain SQLite table: no hash chain, no append-only enforcement, nothing a third party could
-not rewrite with the same file access. It is evidence about our own decisions, not attestable
-evidence. What it does carry: actor, origin, tool, resource, recipient, verdict, rule id,
-plain-English reason, the policy fingerprint that decided it, workflow id and step index. Reasons
-name documents by id and never by title, so a denial cannot leak what it protects.
+**5. What does the audit trail prove, and how is it protected against tampering?**
+Every audit entry is cryptographically sealed in SQLite using a SHA-256 Merkle hash chain (`agentgate/audit_chain.py`):
+EntryHash_i = SHA256(CanonicalFields_i || EntryHash_{i-1}), linked back to a 64-zero genesis root.
+Any row modification, deletion, or reordering breaks the chain and is detected by `verify_audit_chain(store)`.
+The audit record captures: actor, origin, tool, resource id, recipient, decision, rule id,
+plain-English reason, and policy fingerprint. Reasons name documents by ID, never by title or content,
+so a denial never leaks what it protects.
 
 **6. What if it crashes between the tool running and the status being written?**
 A delivery carries `workflow:step` as a unique effect key, so a retried step reuses the row and
