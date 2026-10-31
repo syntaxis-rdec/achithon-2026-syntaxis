@@ -80,8 +80,15 @@ class Store:
 
     def __init__(self, path: str | Path = ":memory:"):
         self.path = str(path)
-        self.conn = sqlite3.connect(self.path)
+        self.conn = sqlite3.connect(self.path, timeout=10.0)
         self.conn.row_factory = sqlite3.Row
+        if str(self.path) != ":memory:":
+            try:
+                self.conn.execute("PRAGMA journal_mode=WAL;")
+            except sqlite3.OperationalError:
+                pass
+        self.conn.execute("PRAGMA busy_timeout=5000;")
+        self.conn.execute("PRAGMA synchronous=NORMAL;")
         self.conn.executescript(SCHEMA)
         self._migrate()
         self.conn.executescript(INDEXES)

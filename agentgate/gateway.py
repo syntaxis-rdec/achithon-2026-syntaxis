@@ -172,3 +172,51 @@ def declassify(state, policies: PolicySet, officer_id: str, artifact_id: str,
                 f"original untouched."),
         label=child.label, policy_hash=policies.fingerprint, justification=justification)
     return child
+
+
+class Gateway:
+    """High-level Gateway facade for agent frameworks and external callers."""
+
+    def __init__(self, state=None, policies: PolicySet | None = None, guard: Guard | None = None,
+                 default_actor: str = "assistant", default_origin: str = "agent"):
+        if policies is None:
+            from pathlib import Path
+            from agentgate.policy import load_policy_set
+            root = Path(__file__).resolve().parent.parent
+            policies = load_policy_set(root / "data" / "principals.json", root / "data" / "policies.json")
+        if state is None:
+            from pathlib import Path
+            from agentgate.store import Store
+            root = Path(__file__).resolve().parent.parent
+            state = Store(root / "data" / "agentgate-v3.sqlite")
+        self.state = state
+        self.policies = policies
+        self.guard = guard
+        self.default_actor = default_actor
+        self.default_origin = default_origin
+
+    def session(self, actor_id: str | None = None, origin: str | None = None) -> Session:
+        return Session(
+            state=self.state,
+            policies=self.policies,
+            actor_id=actor_id or self.default_actor,
+            origin=origin or self.default_origin,
+            guard=self.guard,
+        )
+
+    def evaluate(self, request: ActionRequest, actor_id: str | None = None) -> tuple[Decision, str]:
+        act = actor_id or request.actor_id or self.default_actor
+        sess = self.session(actor_id=act)
+        decision, _outcome = sess.submit(request)
+        token = ""
+        if decision.allowed:
+            from agentgate.tokens import mint_token
+            res = request.resource_id or ",".join(request.source_ids)
+            token = mint_token(
+                actor_id=act,
+                tool=request.tool,
+                resource_id=res,
+                recipient=request.recipient or "",
+            )
+        return decision, token
+
