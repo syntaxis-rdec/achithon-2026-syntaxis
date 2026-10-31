@@ -892,3 +892,53 @@ elif page == "Customer explorer":
             table(customer_payments)
 
 
+# -------------------- REPORTS --------------------
+
+elif page == "Reports":
+    hero(
+        "From workspace to evidence.",
+        "Export current balances, payment reconciliation, "
+        "and recent activity for your presentation.",
+    )
+
+    st.download_button(
+        "Download complete report bundle",
+        data=report_bundle(invoices, payments),
+        file_name="reconflow_reports.zip",
+        mime="application/zip",
+        type="primary",
+        use_container_width=True,
+    )
+
+    invoice_tab, payment_tab, age_tab = st.tabs(
+        ["Invoice balances", "Payments", "Invoice age"]
+    )
+
+    with invoice_tab:
+        table(invoices)
+
+        st.download_button(
+            "Download invoice CSV",
+            invoices.to_csv(index=False).encode("utf-8-sig"),
+            "invoice_balances.csv",
+            "text/csv",
+        )
+
+    with payment_tab:
+        table(payments)
+
+        st.download_button(
+            "Download payment CSV",
+            payments.to_csv(index=False).encode("utf-8-sig"),
+            "payment_reconciliation.csv",
+            "text/csv",
+        )
+
+    with age_tab:
+        st.caption(
+            "Invoice age is not overdue age. No due-date field "
+            "exists in the current schema."
+        )
+        table(get_invoice_age_report())
+
+
