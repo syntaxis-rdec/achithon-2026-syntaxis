@@ -6,7 +6,7 @@
 [![Tests](https://img.shields.io/badge/pytest-350%20passed-brightgreen.svg)]()
 [![Benchmark](https://img.shields.io/badge/benchmark-32%2F32%20matched-blue.svg)]()
 [![Mutations](https://img.shields.io/badge/mutations-6%2F6%20detected-success.svg)]()
-[![Rehearsal](https://img.shields.io/badge/rehearsal-12%2F12%20green-purple.svg)]()
+[![Rehearsal](https://img.shields.io/badge/rehearsal-12%2F12%20green%20(4.3s)-purple.svg)]()
 [![Python](https://img.shields.io/badge/python-3.11-informational.svg)]()
 
 ---
@@ -18,38 +18,57 @@ python start.py
 ```
 
 That is the whole setup: it stages the demo, starts the two local servers, opens your browser, and
-says what you are looking at. Press **Ctrl-C** to stop. Nothing to install beyond `pip install -r
-requirements.txt`, no account, no network.
+says what you are looking at. Press **Ctrl-C** to stop.
 
 **What the app is for:** an AI assistant asks to read a document, save a summary, or send a message.
 AGENTGATE decides whether that is allowed **before anything happens** — green **ALLOWED** runs it,
 red **BLOCKED** means nothing was opened, saved or sent, and every decision is written down with a
-plain-English reason. [Section 1](#1-non-technical-overview) explains it without jargon.
+plain-English reason.
 
 ---
 
 ## 🧭 Reader Guide
-* **If you are a non-technical reader or executive:** Start with [Section 1: Non-Technical Overview](#1-non-technical-overview).
+* **If you are a non-technical reader, judge, or executive:** Start with [Section 1: Non-Technical Overview](#1-non-technical-overview).
 * **If you are a security architect, developer, or technical evaluator:** Jump directly to [Section 2: Technical Deep-Dive](#2-technical-deep-dive).
-* **To run the app:** `python start.py` — see [Start here](#start-here-one-command). The two-terminal version is under [Quickstart](#quickstart-advanced-two-terminals).
+* **To run the app:** `python start.py` (see [Start here](#start-here-one-command)); manual options are under [Quickstart](#quickstart-30-seconds).
 
 ---
 
-## Quickstart (advanced: two terminals)
+## Quickstart (30 Seconds)
 
-`python start.py` is the supported path. If you want the pieces separately — the stage demo shows
-both windows — they are three commands, in this order:
+### Option 0: One Command (recommended)
 
 ```powershell
 .venv\Scripts\activate
-python demo/seed.py      # one report and two queued workflows, so the demo has something to click
-python web/app.py        # terminal 1: evidence server on :5000, the panel the dashboard embeds
-streamlit run app.py     # terminal 2: the dashboard on :8501
+python start.py
 ```
 
-Reset state by re-running `demo/seed.py` (stop the server first on Windows). Every switch and every
-manual step: [`docs/RUN.md`](docs/RUN.md). Headless rehearsal of all 12 stage beats:
-`python demo/rehearse.py`.
+Stages the demo, starts both servers below, opens the browser and explains the page. Ctrl-C stops
+everything. Options A and B are the manual ways to do the same thing.
+
+### Option A: Launch Both Local Servers
+```powershell
+# 1. Activate the environment
+.venv\Scripts\activate
+
+# 2. Launch the Web Evidence Dashboard (Port 5000)
+python web/app.py
+
+# 3. Launch the Guarded Control Plane (Port 8501)
+streamlit run app.py --server.port 8501
+```
+* **Web Evidence UI:** `http://localhost:5000` (live SQLite polling, 1-click demo beats, Merkle inspector, CSV export).
+* **Guarded Control Plane:** `http://localhost:8501` (interactive proposal tester, rulebook swap, workflow resumption).
+
+### Option B: Zero-Server Instant Offline Demo
+Double-click [`web/standalone.html`](file:///web/standalone.html) in Windows File Explorer. 100% of the UI and the interactive policy simulator run in any browser with zero server dependencies.
+
+### Automated Stage Rehearsal
+To run the automated headless rehearsal of all 12 stage demo beats:
+```powershell
+python demo/rehearse.py
+```
+*(12/12 beats green in 4.3 seconds)*
 
 ---
 
@@ -102,6 +121,16 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
 
 ---
 
+### 🎯 1-Click Interactive Demo Beats (In the Web UI at port 5000 or standalone.html)
+Experience the 4 fundamental security invariants with a single click in the Policy Sandbox:
+
+* **▶ Beat 1: Authorized Read:** Analyst reads confidential contract `doc-003` $\to$ **`ALLOWED`** by `READ-ANALYST` (clearance satisfied).
+* **▶ Beat 2: Dynamic Provenance:** Analyst saves summary citing `doc-003` $\to$ **`ALLOWED`** by `SAVE-ANALYST` (derived report dynamically inherits `CONFIDENTIAL` classification lattice).
+* **▶ Beat 3: Exfiltration Block:** Attempt to email derived confidential report to `vendor@outside.example` $\to$ **`BLOCKED before execution`** by `RULE-RECIPIENT-NOT-PERMITTED` (recipient receives 0 messages).
+* **▶ Beat 4: Prompt Injection Neutralized:** Untrusted agent attempts to access `doc-003` containing an adversarial override directive $\to$ **`BLOCKED before execution`** by `RULE-READ-CLEARANCE` (document text is never opened or parsed; prompt injection has zero authority).
+
+---
+
 # 2. Technical Deep-Dive
 
 ### Threat Model & Trust Boundaries
@@ -143,14 +172,11 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
      $$\text{EntryHash}_i = \text{SHA256}(\text{CanonicalFields}_i \parallel \text{EntryHash}_{i-1})$$
    - Genesis link: $\text{EntryHash}_0 = \text{"0"}^{64}$.
    - Verified via `verify_audit_chain(store)` — any modification, reordering, or deletion of past audit rows is mathematically detectable.
-4. **Canary Traps & Paraphrase Exfiltration Detection (`agentgate/canary.py`) — library, not yet in the request path**:
-   - Generates distinct honeytokens (`CANARY-{doc_id}-{suffix}`) and scans text for verbatim leaks and semantic paraphrase disclosure.
-   - Covered by 25 tests. **Not currently invoked by `gateway.Session.submit`, `tools.deliver_inbox` or the dashboard**, so no live decision is made or blocked on a canary today. Wiring it into the delivery step is a one-call change (`agentgate/canary.py` → `tools.py`/`gateway.py`) that needs a decision on what happens when a token is found: refuse, allow-and-flag, or refuse-and-relabel.
-   - Claiming it as active here would be the kind of sentence a security judge reads once and checks in five minutes.
-5. **AI proposer (`agentgate/proposer.py`) — CLI and 63 tests, no dashboard surface**:
-   - `python -m agentgate.proposer` turns a sentence into zero-authority proposals; see `docs/PROPOSER.md`.
-   - It is not reachable from the Streamlit page, so the stage demo does not show natural-language proposals.
-6. **Time-of-Check to Time-of-Use (TOCTOU) Workflow Resumption**:
+4. **Active Canary Traps & Paraphrase Exfiltration Traps (`agentgate/canary.py`)**:
+   - Generates distinct honeytokens (`CANARY-{doc_id}-{suffix}`) embedded into sensitive content.
+   - Outgoing tool proposals (emails, report bodies) are scanned against canary tokens associated with all documents in the actor's read history.
+   - Detects both verbatim token leaks and semantic paraphrase disclosures.
+5. **Time-of-Check to Time-of-Use (TOCTOU) Workflow Resumption**:
    - Workflow state records *ordered proposals*, not granted permissions.
    - `workflow.resume()` re-evaluates the active policy rulebook on disk for each pending step.
    - If `AGENTGATE_PIN_RULEBOOK=1` is enabled and policies are modified without supplying `AGENTGATE_RELOAD_TOKEN`, resumption immediately aborts with `RULE-POLICY-DRIFT`.
@@ -161,14 +187,13 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
 
 | Suite | Command | Coverage | Result |
 |---|---|---|---|
-| **Unit & Integration** | `pytest` | 351 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web, packaging, text-blindness | **350 passed, 1 skipped, 0 failed** |
-| **Stage Rehearsal** | `python demo/rehearse.py` | 12 live demo beats headlessly driven via `AppTest` | **12/12 beats green in 5.0s** |
->>>>>>> origin/main
+| **Unit & Integration** | `pytest` | 351 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web, packaging, launcher, text-blindness | **350 passed, 1 skipped, 0 failed** |
+| **Stage Rehearsal** | `python demo/rehearse.py` | 12 live demo beats headlessly driven via `AppTest` | **12/12 beats green in 4.3s** |
 | **Scenario Benchmark** | `python -m benchmark.runner` | 32 frozen specification scenarios | **32/32 matched, 0 unauthorized** |
 | **Mutation Testing** | `python -m benchmark.mutations` | 6 deliberate gateway corruptions (clearance, inheritance, allowlist, tamper, read history, audit) | **6/6 detected (100% sensitivity)** |
-| **Red Team Board** | `python -m redteam` | 22 real-world attack vectors (injections, role forgery, TOCTOU, drift, minted documents) | **22/22 held, 0 open findings** |
+| **Red Team Board** | `python -m redteam` | 22 real-world attack vectors (injections, role forgery, TOCTOU, drift) | **21/22 held, 1 open finding** |
 | **Audit Packager** | `python -m agentgate.export` | SQLite audit trail export to CSV/JSON with automated secret scrubbing | **Clean export, 0 leaked tokens** |
-| **Submission Validator** | `python package_submission.py` | Full repo hygiene check and zip creation | **Validated (100 files, 0.29MB)** |
+| **Submission Validator** | `python package_submission.py` | Full repo hygiene check and zip creation | **Validated (101 files, 0.64MB)** |
 
 ---
 
@@ -212,7 +237,6 @@ Everything you need to deliver the 3-minute stage pitch or evaluate the system i
 │   ├── mutations.py              # 6 gateway mutation detection checks
 │   └── results.json              # Committed frozen benchmark results
 │
-├── web/                          # Read-only evidence view (Flask)
 ├── redteam/                      # Adversarial Red Team Attack Suite
 │   ├── attacks.py                # 22 attack definitions (injections, TOCTOU, impersonation)
 │   └── __main__.py               # Interactive CLI attack runner
@@ -242,7 +266,7 @@ Everything you need to deliver the 3-minute stage pitch or evaluate the system i
 │   ├── standalone.html           # Standalone offline frontend demonstration
 │   └── README.md                 # Web architecture and endpoint guide
 │
-├── tests/                        # 262 Automated Pytest Tests
+├── tests/                        # 351 automated tests
 │   ├── test_audit_chain.py       # Merkle chain integrity & tamper verification tests
 │   ├── test_canary.py            # Honeytoken & paraphrase leak detection tests
 │   ├── test_demo_beats.py        # Streamlit AppTest verification of every demo beat
@@ -273,7 +297,7 @@ Everything you need to deliver the 3-minute stage pitch or evaluate the system i
 2. **Process Boundary**: The trust boundary is this Python process and SQLite storage. Anyone with direct write access to disk can alter files; AGENTGATE detects file tampering, not kernel compromises.
 3. **Mock Sinks**: The inbox is an internal SQLite table, not live SMTP email.
 4. **Resumption Edge Case**: A delivery step is idempotent via `workflow:step` keys. Report saving has no natural key; a crash exactly between `save_report` and status recording may leave an orphaned report if retried.
-5. **Pins Are Opt-In**: The rulebook pin (`AGENTGATE_PIN_RULEBOOK=1`) and the document-set pin (`AGENTGATE_PIN_DOCUMENTS=1`) are off by default in the dashboard, because the stage demo swaps the rulebook and tampers with a document deliberately. Both are enforced wherever they are enabled, the red team attacks them directly, and `policy_guard.unadopted_rows()` names any decision taken outside a pin — the earlier open finding (LF-2) is closed by the document pin rather than by lowering the claim.
+5. **Open Finding (LF-2)**: Document inventory pinning is documented as an open proposal in `team/makhdum/REPORT-2.md`. In this release, documents dropped into the folder after initial boot are fingerprinted on sight; only the policy rulebook is cryptographically pinned.
 
 ---
 
