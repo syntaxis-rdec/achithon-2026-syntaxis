@@ -1,0 +1,164 @@
+{
+  "generated_at": "2026-10-30T19:43:33+00:00",
+  "rulebook_fingerprint": "12a49fe3ae7fc597",
+  "attacks": 22,
+  "refused_or_safe": 22,
+  "succeeded": 0,
+  "open_findings": [],
+  "results": [
+    {
+      "attack": "claim_stronger_actor",
+      "safe": true,
+      "rule_id": "RULE-READ-CLEARANCE",
+      "detail": "allowed=False rule=RULE-READ-CLEARANCE executed=[] inbox=0",
+      "open_finding": false
+    },
+    {
+      "attack": "claim_human_origin",
+      "safe": true,
+      "rule_id": "RULE-READ-CLEARANCE",
+      "detail": "allowed=False audit_origin=agent",
+      "open_finding": false
+    },
+    {
+      "attack": "hide_a_read_source",
+      "safe": true,
+      "rule_id": "SAVE-ANALYST",
+      "detail": "provenance=['doc-002', 'doc-001'] label=CONFIDENTIAL",
+      "open_finding": false
+    },
+    {
+      "attack": "smuggle_a_secret_in_the_title",
+      "safe": true,
+      "rule_id": "SAVE-ANALYST",
+      "detail": "title='Summary of doc-002'",
+      "open_finding": false
+    },
+    {
+      "attack": "lower_label_by_citing_the_public_twin",
+      "safe": true,
+      "rule_id": "SAVE-ANALYST",
+      "detail": "label=CONFIDENTIAL",
+      "open_finding": false
+    },
+    {
+      "attack": "deliver_one_clearance_short",
+      "safe": true,
+      "rule_id": "RULE-RECIPIENT-CLEARANCE",
+      "detail": "allowed=False rule=RULE-RECIPIENT-CLEARANCE executed=[] inbox=0",
+      "open_finding": false
+    },
+    {
+      "attack": "deliver_to_unapproved_directory_address",
+      "safe": true,
+      "rule_id": "RULE-RECIPIENT-NOT-PERMITTED",
+      "detail": "allowed=False rule=RULE-RECIPIENT-NOT-PERMITTED executed=[] inbox=0",
+      "open_finding": false
+    },
+    {
+      "attack": "read_a_softened_document",
+      "safe": true,
+      "rule_id": "RULE-DOC-INTEGRITY",
+      "detail": "allowed=False rule=RULE-DOC-INTEGRITY executed=[] inbox=0",
+      "open_finding": false
+    },
+    {
+      "attack": "deliver_after_the_source_was_tampered",
+      "safe": true,
+      "rule_id": "RULE-PROVENANCE-TAMPERED",
+      "detail": "allowed=False rule=RULE-PROVENANCE-TAMPERED executed=[] inbox=0",
+      "open_finding": false
+    },
+    {
+      "attack": "resume_after_the_rulebook_tightened",
+      "safe": true,
+      "rule_id": "",
+      "detail": "status=halted inbox=0 blocked=[(1, 'RULE-ACTOR-CANNOT-RELEASE')]",
+      "open_finding": false
+    },
+    {
+      "attack": "crash_between_delivery_and_status_write",
+      "safe": true,
+      "rule_id": "",
+      "detail": "inbox after first run=1, after resume=1",
+      "open_finding": false
+    },
+    {
+      "attack": "swap_the_rulebook_mid_session",
+      "safe": true,
+      "rule_id": "RULE-POLICY-DRIFT",
+      "detail": "allowed=False rule=RULE-POLICY-DRIFT audited=RULE-POLICY-DRIFT",
+      "open_finding": false
+    },
+    {
+      "attack": "reload_then_the_new_rulebook_decides",
+      "safe": true,
+      "rule_id": "RULE-SOURCE-TOO-SENSITIVE",
+      "detail": "before=SAVE-ANALYST after=RULE-SOURCE-TOO-SENSITIVE",
+      "open_finding": false
+    },
+    {
+      "attack": "reload_without_the_token",
+      "safe": true,
+      "rule_id": "",
+      "detail": "refused (reload refused: the operator reload token is required and was not supplied); audited as RULE-POLICY-RELOAD-REFUSED",
+      "open_finding": false
+    },
+    {
+      "attack": "ask_a_non_officer_to_release",
+      "safe": true,
+      "rule_id": "",
+      "detail": "audited as RULE-DECLASSIFY-ROLE",
+      "open_finding": false
+    },
+    {
+      "attack": "release_a_label_upward",
+      "safe": true,
+      "rule_id": "",
+      "detail": "audited as RULE-DECLASSIFY-DIRECTION",
+      "open_finding": false
+    },
+    {
+      "attack": "act_as_a_recipient",
+      "safe": true,
+      "rule_id": "RULE-RECIPIENT-NOT-ACTOR",
+      "detail": "allowed=False rule=RULE-RECIPIENT-NOT-ACTOR executed=[] inbox=0",
+      "open_finding": false
+    },
+    {
+      "attack": "act_as_an_unknown_actor",
+      "safe": true,
+      "rule_id": "RULE-UNKNOWN-ACTOR",
+      "detail": "allowed=False rule=RULE-UNKNOWN-ACTOR executed=[] inbox=0",
+      "open_finding": false
+    },
+    {
+      "attack": "forge_a_workflow_step_reference",
+      "safe": true,
+      "rule_id": "",
+      "detail": "status=halted inbox=0",
+      "open_finding": false
+    },
+    {
+      "attack": "resume_checks_the_policy_pin",
+      "safe": true,
+      "rule_id": "",
+      "detail": "before=RULE-READ-CLEARANCE after=RULE-POLICY-DRIFT allowed=0 status=refused",
+      "open_finding": false
+    },
+    {
+      "attack": "decisions_under_an_unadopted_rulebook_are_findable",
+      "safe": true,
+      "rule_id": "",
+      "detail": "unadopted rows=1, grants=1",
+      "open_finding": false
+    },
+    {
+      "attack": "mint_a_forged_document",
+      "safe": true,
+      "rule_id": "",
+      "detail": "allowed=False rule=RULE-DOCUMENT-DRIFT integrity=ok",
+      "open_finding": false
+    }
+  ]
+}
