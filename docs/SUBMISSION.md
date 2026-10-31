@@ -14,10 +14,11 @@ necessary to run, verify, and inspect the gateway:
 - `app.py` — Streamlit interactive stage dashboard
 - `benchmark/` — benchmark runner, 32 frozen scenarios, mutation tests
 - `redteam/` — 22-attack red team suite and automated attack board
+- `web/` — read-only evidence view of the same SQLite file (`python web/app.py`)
 - `demo/` — stage seed script, policy swap utility, automated rehearsal engine (`rehearse.py`)
 - `data/` — documents, policies, evaluation injection documents
 - `docs/` — `RUN.md`, `DEMO_SCRIPT.md`, `DEMO_RUNSHEET.md`, `JUDGE_QA.md`, `PROPOSER.md`, `SUBMISSION.md`
-- `tests/` — complete test suite (211+ passing tests)
+- `tests/` — complete test suite (350 passing, 1 skipped, 0 failures)
 - `requirements.txt`, `pytest.ini`, `README.md`, `AGENTS.md`, `log.txt`
 - `agent-trace/PS08/<harness>/` — raw, redacted agent transcripts for auditability
 
@@ -61,7 +62,7 @@ Run all four verification commands before archiving:
    ```powershell
    .venv\Scripts\python.exe -m pytest
    ```
-   *Expected: 211+ passed, 1 strict xfailed (LF-2).*
+   *Expected: 350 passed, 1 skipped, 0 failed.*
 
 2. **Automated Stage Demo Rehearsal:**
    ```powershell
@@ -80,7 +81,7 @@ Run all four verification commands before archiving:
    ```powershell
    .venv\Scripts\python.exe -m redteam
    ```
-   *Expected: 22 attacks, 21 held, 1 documented open finding (LF-2).*
+   *Expected: 22 attacks, 22 held, 0 open findings.*
 
 5. **Evidence Pack Export:**
    ```powershell

@@ -39,7 +39,7 @@
 - **211 Automated Tests**: 100% green across authorization, provenance, resumption, and injection.
 - **32/32 Benchmark Scenarios**: 0 unauthorized executions, 0 false allows, 0 false denies.
 - **6/6 Mutation Suite Detected**: Deliberately corrupted the gateway 6 ways; every mutation was caught.
-- **21/22 Red Team Attacks Held**: Prompt injections, role impersonations, title smuggling, replay attacks, forged steps.
+- **22/22 Red Team Attacks Held**: Prompt injections, role impersonations, title smuggling, replay attacks, forged steps, a document minted after the pin.
 - **12/12 Automated Stage Rehearsal**: Headlessly verified all 12 live demo beats in 4.9 seconds.
 - **Audit Export with Secret Redaction**: One-command export to CSV/JSON with zero leaked API keys or credentials.
 

@@ -77,15 +77,15 @@ green under the rulebook currently on disk and puts exactly one message in the i
 `..\.venv\Scripts\python.exe demo\swap_policy.py tighten`. Back in the browser, click
 `Saved workflow` → `DEMO-B same proposal, tightened rulebook`.
 **Screen:** the terminal prints `tighten: rulebook fingerprint 12a49fe3ae7fc597 ->
-c0a7b0e1860531db`; in section 5 the caption reads **`Rulebook on disk right now:
-c0a7b0e1860531db`** and DEMO-B still shows three `pending` rows.
+b76a1526a887e3d2`; in section 5 the caption reads **`Rulebook on disk right now:
+b76a1526a887e3d2`** and DEMO-B still shows three `pending` rows.
 **Say:** "One number in the rulebook changes: analysts may now only summarise public material.
 The app cannot write its own policy file — that is deliberate — so this comes from outside the
 process. Nothing has been re-decided yet; those three steps are still pending."
 
 ### Beat 9 — resumption refuses the step that passed a minute ago (10 s)
 **Click:** `Resume`.
-**Screen:** red **`Stopped at the first block under `c0a7b0e1860531db`**", step rows
+**Screen:** red **`Stopped at the first block under `b76a1526a887e3d2`**", step rows
 `done / blocked / halted`, step 1 reading **RULE-SOURCE-TOO-SENSITIVE**, and
 **Messages actually delivered: 1** — still one.
 **Say:** "Resume re-reads the rulebook from disk and re-decides every step that is not already
@@ -130,7 +130,7 @@ written in advance, and it says so on screen."
 the browser, with DEMO-B still selected, click `Resume`. Then scroll up to section 3.
 **Screen:** green **`Ran to completion under `12a49fe3ae7fc597`**, DEMO-B's rows now
 `done / done / done`, **Messages actually delivered: 2**, and two audit rows for the same step:
-one `BLOCKED / RULE-SOURCE-TOO-SENSITIVE / c0a7b0e1860531db` and one
+one `BLOCKED / RULE-SOURCE-TOO-SENSITIVE / b76a1526a887e3d2` and one
 `ALLOWED / SAVE-ANALYST / 12a49fe3ae7fc597`.
 **Say:** "Undo the tightening and the identical step passes again. Every decision is stored with
 the fingerprint of the rulebook that made it, so the trail shows both verdicts and you can prove

@@ -70,12 +70,17 @@ state, policies = world()
 # rulebook and watch the next click use it" stays exactly as scripted, and the guard still
 # covers any session that outlives a rerun, which is what an agent runtime does.
 PIN_RULEBOOK = os.environ.get("AGENTGATE_PIN_RULEBOOK", "") == "1"
+# Pinning the document *set* as well catches a document minted after the pin, which per-document
+# fingerprints cannot see. Off by default: the tamper demo edits a document on purpose, and that
+# edit would then refuse the whole run instead of showing RULE-DOC-INTEGRITY.
+PIN_DOCUMENTS = os.environ.get("AGENTGATE_PIN_DOCUMENTS", "") == "1"
 
 if PIN_RULEBOOK and "guard" in st.session_state:
     guard: Guard = st.session_state["guard"]
     adopted: PolicySet = st.session_state["pinned_policies"]
 else:
-    guard = Guard(PRINCIPALS, POLICIES_FILE, token=RELOAD_TOKEN)
+    guard = Guard(PRINCIPALS, POLICIES_FILE, token=RELOAD_TOKEN,
+                documents_path=DOCS_DIR if PIN_DOCUMENTS else None)
     adopted = policies
     if PIN_RULEBOOK:
         st.session_state["guard"] = guard
@@ -147,6 +152,26 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("AGENTGATE — permissions enforced before an AI acts")
+st.markdown("""
+<div style="background:#0f1c33;border:1px solid #2a3f66;border-left:4px solid #00e5ff;
+            border-radius:10px;padding:16px 20px;margin:6px 0 14px;color:#dbe7ff;
+            font-size:15px;line-height:1.65">
+  <b style="color:#ffffff;font-size:16px">What this page does</b><br>
+  An AI assistant asks to <b>read a document</b>, <b>save a summary</b>, or <b>send a message</b>.
+  This page decides whether that is allowed <b>before anything happens</b>. If it is not allowed,
+  nothing is opened, saved or sent.
+  <br><br>
+  <b style="color:#ffffff">No technical knowledge needed.</b> In <b>section 1</b> the choices are
+  already filled in; press <b>Submit to gateway</b>. Look at <b>section 2</b>: green <b>ALLOWED</b>
+  means the action ran, red <b>BLOCKED</b> means it never did. <b>Section 3</b> lists every decision
+  ever made, with a plain-English reason.
+  <br><br>
+  <span style="color:#9fb3d9">The other two sections are for evidence, not for using the app:
+  <b>section 4</b> re-runs 32 frozen test cases, and <b>section 5</b> shows queued actions that are
+  re-checked before they run.</span>
+</div>
+""", unsafe_allow_html=True)
+
 st.caption(
     "An AI assistant proposes tool calls. A separate, deterministic gateway decides. "
     "Document text has no authority, identities are bound by the session, and security "
@@ -159,8 +184,8 @@ st.markdown("""
     <span class="sec-badge sec-badge-green">🛡️ ZERO-AUTHORITY GATEWAY: ACTIVE</span>
     <span class="sec-badge sec-badge-cyan">📄 DOCUMENT TEXT: UNTRUSTED & UNPARSED</span>
     <span class="sec-badge sec-badge-purple">⛓️ MERKLE AUDIT CHAIN: TAMPER-EVIDENT</span>
-    <span class="sec-badge sec-badge-gold">🪤 CANARY HONEYTOKENS: ARMED</span>
-    <span class="sec-badge sec-badge-cyan">🌐 FLASK EVIDENCE SERVER: http://localhost:5000</span>
+    <span class="sec-badge sec-badge-gold">🪤 CANARY LIBRARY: TESTED, NOT WIRED</span>
+    <span class="sec-badge sec-badge-cyan">🌐 EVIDENCE SERVER: python web/app.py → :5000</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -189,13 +214,16 @@ with st.expander("👉 Evaluator & Judge Quick-Start Guide (Click to expand)"):
 
 if not PIN_RULEBOOK:
     st.caption("Rulebook pin · off · `AGENTGATE_PIN_RULEBOOK=1` refuses a rulebook swapped "
-               "between clicks until an operator adopts it")
+               "between clicks until an operator adopts it; `AGENTGATE_PIN_DOCUMENTS=1` also pins "
+               "the document set, so a minted document is refused")
 elif drift is None:
     st.caption(f"Rulebook integrity · pinned `{guard.recorded}` · re-checked before every decision")
 else:
     st.error(
-        f"Rulebook drift · pinned `{drift.expected}`, on disk `{drift.found}`. Every action is "
-        "denied under `RULE-POLICY-DRIFT` and audited until an operator reloads."
+        f"{drift.kind.title()} drift · pinned `{drift.expected}`, on disk `{drift.found}`. Every "
+        "action is denied under "
+        f"`{'RULE-DOCUMENT-DRIFT' if drift.kind == 'documents' else 'RULE-POLICY-DRIFT'}` and "
+        "audited until an operator reloads."
     )
     with st.form("reload_rulebook"):
         token = st.text_input("Operator reload token", type="password")

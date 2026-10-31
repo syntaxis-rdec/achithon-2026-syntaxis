@@ -1,12 +1,25 @@
 # Running AGENTGATE
 
+## The easy path
+
+```bash
+python start.py
+```
+
+Stages the demo, starts both servers, opens the browser, and explains the page. Ctrl-C stops it.
+Everything below is the manual version of the same thing.
+
+## Manual path
+
 Windows PowerShell:
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-streamlit run app.py
+python demo/seed.py            # stage the demo: one report, two queued workflows
+python web/app.py              # terminal 1: evidence server on :5000 (the dashboard embeds it)
+streamlit run app.py           # terminal 2: the dashboard
 ```
 
 macOS / Linux:
@@ -14,7 +27,9 @@ macOS / Linux:
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-streamlit run app.py
+python demo/seed.py
+python web/app.py &            # terminal 1: evidence server on :5000
+streamlit run app.py           # terminal 2
 ```
 
 Tests:
@@ -23,7 +38,9 @@ Tests:
 pytest
 ```
 
-State lives in `data/agentgate-v3.sqlite`. **Reset demo data** in the dashboard clears it.
+Two processes, two ports. The evidence server prints the read-only view the dashboard embeds in its dark-mode panel; without it that panel is blank and everything else still works. `demo/seed.py` is what gives the workflow beats anything to click, and re-running it is how you reset state.
+
+State lives in `data/agentgate-v3.sqlite`. To reset it, stop the server and run `python demo/seed.py`; the in-page reset button is not reliable on Windows.
 
 ## What to try
 
@@ -75,6 +92,31 @@ Dashboard section 4 shows the benchmark and red team attack board live.
   under pinned mode.
 - `AGENTGATE_DATA_DIR`: override the data directory (used by the test suite and rehearsal to run in a
   clean scratch environment without touching live state).
+
+## Environment switches (all optional, all off by default)
+
+| Variable | Effect |
+|---|---|
+| `AGENTGATE_DATA_DIR` | Point the dashboard, the demos, the rehearsal and the web viewer at a scratch copy of `data/` instead of the live folder. |
+| `AGENTGATE_RELOAD_TOKEN` | The token an operator types to adopt a rulebook that changed on disk. Unset means the pin can never be moved. |
+| `AGENTGATE_PIN_RULEBOOK=1` | Keep the rulebook pin across dashboard reruns, so a policy file swapped between clicks is refused under `RULE-POLICY-DRIFT` until adopted. |
+| `AGENTGATE_PIN_DOCUMENTS=1` | Also pin the document set, so a document minted or edited after the pin is refused under `RULE-DOCUMENT-DRIFT`. Off by default because the tamper demo edits a document on purpose. |
+| `AGENTGATE_WEB_PORT` / `AGENTGATE_WEB_HOST` | Where the read-only evidence server listens; the dashboard iframe assumes 5000. |
+
+## One command per claim
+
+| Claim | Command |
+|---|---|
+| the suite is green | `pytest` — 351 tests, 350 pass, 1 skipped, 0 failures |
+| the frozen table is matched | `python -m benchmark.runner` — 32/32 |
+| the table would notice a break | `python -m benchmark.mutations` — 6/6 detected |
+| the attacks are refused | `python -m redteam` — 22 of 22 held, none open |
+| the demo script actually runs | `python demo/rehearse.py` — 12 beats, exit 0, under 90 s |
+| the trail can leave the app | `python -m agentgate.export <db> exports/` |
+| the trail can be read in a browser | `python web/app.py` — read-only, every number from SQLite |
+
+`python demo/rehearse.py` exits `1` and names the beat when the demo breaks; add
+`--break-rule SAVE-ANALYST` to watch it do that on purpose against a scratch rulebook.
 
 ## Honesty notes
 

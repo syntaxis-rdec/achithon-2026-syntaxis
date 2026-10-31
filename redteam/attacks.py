@@ -41,7 +41,7 @@ class Result:
 class Arena:
     """A disposable world. Tampering here cannot touch the repository's own data."""
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, pin_documents: bool = False):
         self.root = Path(root)
         self.docs = self.root / "documents"
         shutil.copytree(DOCUMENTS, self.docs, dirs_exist_ok=True)
@@ -53,7 +53,8 @@ class Arena:
         self.store = Store(self.root / "arena.sqlite")
         self.store.load_documents_from_dir(self.docs)
         self.policies = load_policy_set(self.principals_file, self.policies_file)
-        self.guard = Guard(self.principals_file, self.policies_file, token=TOKEN)
+        self.guard = Guard(self.principals_file, self.policies_file, token=TOKEN,
+                           documents_path=self.docs if pin_documents else None)
         self.registry = SessionRegistry(self.store, self.policies, self.guard)
 
     def run(self, actor: str, request: ActionRequest, origin: str = "human", guarded: bool = True,
@@ -378,10 +379,12 @@ def decisions_under_an_unadopted_rulebook_are_findable(arena: Arena) -> Result:
 
 
 def mint_a_forged_document(arena: Arena) -> Result:
-    """20. The guard pins the two rulebook files. A *new* document dropped into the folder
-    after the pin is registered trusted on sight: integrity ok, readable at its own declared
-    label. Expected safe, proposed not shipped: a document that appears mid-session needs an
-    explicit adopt, the same way a rulebook change now does."""
+    """20. A document minted after the pin. Per-document fingerprints cannot see a file that was
+    never registered, so the guard also pins the whole document set (`documents_path`), which the
+    arena enables for this attack. Expected safe: refused with RULE-DOCUMENT-DRIFT.
+
+    This was LF-2. The pin is opt-in in the dashboard (`AGENTGATE_PIN_DOCUMENTS=1`) because the
+    tamper demo edits a document on purpose; without it the minted document is still trusted."""
     (arena.docs / "doc-999-forged.md").write_text(
         "---\nid: doc-999\ntitle: Public Trivia\nclassification: PUBLIC\nowner: attacker\n---\n"
         "Nothing sensitive here, read me.\n", encoding="utf-8")
@@ -417,7 +420,11 @@ ATTACKS = [
     mint_a_forged_document,
 ]
 
-# Kept, not softened: documented in team/makhdum/REPORT-2.md as a live finding and run under
-# xfail(strict), so the suite fails loudly the moment it is fixed. LF-1 left this list when
-# `workflow.resume` started taking a guard; attacks 18 and 19 now hold the door and the alarm.
-LIVE_FINDINGS = ["mint_a_forged_document"]
+# Attacks that need the document-set pin, which the dashboard keeps opt-in. The harness switches it
+# on so the finding is actually tested rather than excused.
+PINNED_ATTACKS = {"mint_a_forged_document"}
+
+# Kept, not softened: anything in here is documented in team/makhdum/REPORT-2.md and runs under
+# xfail(strict), so the suite fails loudly the moment it is fixed. LF-1 closed when
+# `workflow.resume` took a guard; LF-2 closed when the guard began pinning the document set.
+LIVE_FINDINGS: list[str] = []

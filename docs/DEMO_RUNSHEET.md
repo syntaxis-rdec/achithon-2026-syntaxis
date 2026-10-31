@@ -9,7 +9,7 @@ One page. Read it top to bottom once before you go on, and keep it open while yo
       *Do not disturb*). Also close Slack/Teams/mail, and quit any screen-recording HUD.
 - [ ] **Suite green.** From the worktree root
       `C:\Users\Tanush Garg\Documents\Qoder\2026-10-29\376c904f\team-9-11\.venv\Scripts\python.exe -m pytest`
-      → expect **83 passed**. If it is not 83, do not go on; fix or re-read `log.txt`.
+      → expect **343 passed, 1 skipped, 0 failed**. If it differs, do not go on; read `log.txt`.
 - [ ] **Seed, with the server stopped.** `..\.venv\Scripts\python.exe demo\seed.py` (same venv path,
       run from the worktree root). It prints the staged report id, the two workflow ids and
       `inbox: 0 messages delivered`, then asserts its own starting state and exits non-zero if it
@@ -19,6 +19,9 @@ One page. Read it top to bottom once before you go on, and keep it open while yo
 - [ ] **Rulebook is the default one.** The seed prints `rulebook on disk: 12a49fe3ae7fc597`. If it
       prints `c0a7b0e1860531db`, a previous rehearsal left the tightened file in place; the seed
       has now put it back.
+- [ ] **Start the evidence server.** `..\.venv\Scripts\python.exe web\app.py` — it serves
+      `http://localhost:5000`, which the dashboard's embedded dark panel loads. If it is not running the
+      panel is blank; say so rather than letting a judge see an empty frame.
 - [ ] **Start the app.** `..\.venv\Scripts\python.exe -m streamlit run app.py --server.port 8570`
 - [ ] **Port is free and serving.** Open `http://localhost:8570` and see all five sections:
       `1. Propose an action`, `2. Gateway decision`, `3. Audit trail and mock inbox`,

@@ -209,3 +209,179 @@ file changes this rehearsal.
 - `python demo/rehearse.py` — 12/12 beats, 5.8 s, exit 0. `--break-rule SAVE-ANALYST` — exit 1, beat 2.
 - `pytest` — **204 passed, 1 xfailed** (the xfail is LF-2 from task 2, kept strict). 11 of those are
   new rehearsal tests; no existing test was edited, skipped or weakened.
+
+---
+
+# Task 4 — Aryan's lane (built at the finder's request) and MVP hardening
+
+`lane/aryan` was byte-identical to `main` with the submission packaging unbuilt, so it was the last
+thing on the critical path. All four of Aryan's files are **new**, so they were built on `lane/makhdum`
+without touching anyone's file, and `lane/aryan` can be fast-forwarded to these commits if he wants the
+history on his branch.
+
+- `agentgate/export.py` + `tests/test_export.py` (12 tests) — `python -m agentgate.export <db> <out>`
+  writes `audit.csv`, `audit.json`, `outbox.csv`, `summary.json`, prints one line, creates the directory.
+  Redaction runs before writing over `sk-`, `ghp_`, `Bearer …`, bare `eyJ…` JWTs and 32+ hex runs; the
+  count lands in `summary.json`. The 32-hex floor keeps the 16-character rulebook fingerprint readable —
+  it is evidence, not a secret.
+- `docs/SUBMISSION.md` — one page: the six commands to run before packaging, what goes in the archive,
+  what never does, the `agent-trace/PS08/<harness>/` layout, the redaction rule, and the known limits.
+- `team/aryan/NOTES.md` — findings and verification for that lane.
+
+## Hardening landed with it
+
+- `.github/workflows/ci.yml` — runs pytest, the scenario table, the six mutations, the red team and the
+  stage rehearsal on every push. The evidence was only ever checked on one machine.
+- `tests/test_text_blindness.py` (6 tests) — parses `policy.py` and `labels.py` and asserts they never
+  reach `.body`, never import `tools`/`store`/`gateway`, and that the one legitimate body copy in
+  `gateway.declassify` is the only place a body is named. The positive control points the same scanner at
+  `tools.py` and requires it to find the read there, so the check cannot pass by being blind.
+- **Three published numbers were wrong and are now right:** `README.md` said 42 tests (223),
+  `team/README.md` said the baseline was 34, and `docs/DEMO_SCRIPT.md` quoted tightened
+  `c0a7b0e1860531db` which the app has never rendered (now `b76a1526a887e3d2`). That last one closes
+  LF-3, and the rehearsal's beat 0 went from `warn` to `yes` on the next run.
+- `docs/RUN.md` — a one-command-per-claim table, including `python -m redteam`, `python demo/rehearse.py`
+  and the export, none of which were documented anywhere a judge would look.
+- `.gitignore` — `.coverage`, `htmlcov/`.
+
+## Requests (task 4)
+
+- **Tanush — decision needed:** `app.py` does not expose the proposer or the export. Both are reachable
+  from the CLI only. If the judged demo should include them, that is a dashboard change and his file; the
+  alternative is naming them in `README`/`JUDGE_QA` as library features. They are now documented in
+  `docs/PROPOSER.md`, `docs/RUN.md` and `docs/SUBMISSION.md`, which is the least that was missing.
+- **Tanush — `agentgate/store.py` / `workflow.py`:** still the two workarounds recorded in
+  `team/tanush/REQUESTS.md` (single-run `Store`, non-appending `add_steps`). Not touched here.
+- **Aryan:** the export lane is ready to adopt on `lane/aryan` by fast-forward.
+
+## Ready to merge (task 4)
+
+- Code commit `20b433a` (export + tests), docs `7a74fd1` (submission + lane notes), hardening
+  `138cd5f` (CI, structural tests, corrected numbers), `3274c06` (merge of `lane/aryan`, notes
+  conflict resolved by keeping both), `58c4a9c` (flask declared), then the notes/log commit.
+- Aryan's `web/` layer is now in this lane and is **no longer a mockup**: the page is rendered from
+  the live store, the rulebook fingerprint on disk and the two published evidence artifacts, shows
+  zeros when there is no database, and is read-only by construction (only `GET /` and
+  `GET /api/snapshot`; POST returns 405). The fake counters and the approve/resume handlers that
+  mutated local arrays are gone. That history is recorded in his section of `team/aryan/NOTES.md`.
+- `pytest` — **232 passed, 1 xfailed**; 28 of those tests are new here (12 export, 6 structural,
+  2 for Aryan's web routes, 8 for the live web page).
+- `python -m agentgate.export` on a seeded database — one line, four files, exit 0.
+- `python demo/rehearse.py` — 12/12 beats, 6.2 s, exit 0, beat 0 now `yes`.
+- `python -m benchmark.runner` 32/32, `benchmark.mutations` 6/6, `python -m redteam` 21/22 held.
+
+---
+
+# Task 5 — remaining gaps closed, both findings now shut
+
+Merged main twice (the dark frontend + Flask embed, then the audit chain/canary/packager wave). Where
+main and this lane both produced the same thing, main won: its export, its `docs/SUBMISSION.md` and its
+template are canonical; only the bare-`eyJ` JWT redaction rule was ported from my duplicate.
+
+**Closed since the last report:**
+
+- **LF-1** — `workflow.resume` and `declassify` take the guard; a rulebook edit nobody adopted now halts
+  a resumed run with `RULE-POLICY-DRIFT`, and `policy_guard.unadopted_rows()` makes any guardless path
+  visible in the audit trail.
+- **LF-2** — the guard pins the document set (`documents_path`): a file minted after the pin is refused
+  with `RULE-DOCUMENT-DRIFT`, and `reload(token)` re-pins both together. The board is **22/22, 0 open**.
+- **No browser-blind spot** — `tests/test_server_smoke.py` starts Streamlit and the Flask evidence server
+  as subprocesses and speaks HTTP to them; the evidence server port is configurable and no longer runs the
+  reloader, which held SQLite open on Windows.
+- **The archive is tested** — `tests/test_packaging.py` builds a real zip, asserts the source is in it,
+  asserts no `.sqlite`/`.pyc`/`.venv`/`.env` rides along, and that a planted token fails the build. The
+  built archive is now git-ignored.
+- **The export was voiding the Merkle chain** — Tanush's audit hash chain stores 64-hex links in
+  `prev_hash`/`entry_hash`, which the 32+ hex redaction rule matched, so every exported pack went out
+  with its tamper-evidence replaced by `[REDACTED]`. Caught by running the CLI on a seeded database and
+  seeing "2 redactions" where there should be none. `INTEGRITY_COLUMNS` now exempts the three hash
+  columns (`policy_hash`, `prev_hash`, `entry_hash`); a test asserts the links survive byte-for-byte
+  *and* that a planted token in a justification still gets redacted. A fresh seeded export reports 0
+  redactions.
+- **The frozen table is guarded** — `tests/test_guarded_benchmark.py` replays all 32 scenarios through a
+  pinned registry and requires the committed verdicts, then breaks the pin on purpose and requires
+  `RULE-POLICY-DRIFT`. `benchmark/` itself is untouched.
+- **The text-blindness claim is structural** — AST checks with a positive control that reads `tools.py`.
+
+**Still true, said plainly:** both pins are opt-in in the dashboard (`AGENTGATE_PIN_RULEBOOK`,
+`AGENTGATE_PIN_DOCUMENTS`) because the stage demo swaps the rulebook and tampers with a document on
+purpose. `AGENTGATE_*` switches, the rehearsal and the export are documented in `docs/RUN.md`.
+
+## One claim that was not true (fixed in the same pass)
+
+`README.md` said outgoing proposals "are scanned" against canary honeytokens. They are not: `canary`
+appears nowhere in `gateway.py`, `tools.py`, `policy.py`, `workflow.py` or `app.py` — it is a library
+with 25 tests and no call site. The README now says that, and the same for the proposer (CLI and 63
+tests, no dashboard surface). Rewording the claim was the right call over silently wiring the feature:
+what a canary hit should *do* (refuse, allow-and-flag, refuse-and-relabel) is a product decision for
+Tanush, and a security claim a judge can check in five minutes should not be left optimistic.
+
+## Ready to merge (task 5)
+
+- `agentgate/policy_guard.py`, `agentgate/gateway.py`, `app.py`, `redteam/*`, 4 new test files,
+  `web/app.py`, `.gitignore`, plus the aligned numbers in README/PITCH_DECK/RUN/SUBMISSION/CI.
+- `pytest` — **342 passed, 1 skipped, 0 failed** (343 collected; the skip is the live-findings
+  parametrization with an empty list, kept so the mechanism is still exercised).
+- `python -m redteam` — **22/22 held, 0 open findings**; `redteam/results.json` regenerated.
+- `python demo/rehearse.py` — **12/12 beats**, exit 0, under 90 s.
+- `python -m benchmark.runner` 32/32 · `benchmark.mutations` 6/6 · `package_submission.py` builds.
+
+---
+
+# Final state (frozen)
+
+The project is finalised with two items deliberately **not** built, at the finder's instruction
+("finalize the project without the pending dashboard tasks"): the canary is not wired into the
+delivery step, and the proposer has no dashboard surface. Both are stated as such in `README.md`
+under Honest Limitations, both remain fully tested libraries, and neither is claimed as active.
+
+## What was measured on the frozen tree
+
+| Check | Result |
+|---|---|
+| `pytest` | **350 passed, 1 skipped, 0 failed** (351 collected; the skip is the live-findings parametrization with an empty list) |
+| `python -m benchmark.runner` | **32/32** matched, 0 unauthorized, 0 false allow/deny, 32/32 audit rows |
+| `python -m benchmark.mutations` | **6/6** breakages detected |
+| `python -m redteam` | **22/22** attacks held, **0 open findings** |
+| `python demo/rehearse.py` | **12/12** beats, exit 0, under 90 s |
+| `python -m agentgate.export` | four files, **0 redactions** on a seeded database, Merkle links intact |
+| `python package_submission.py` | archive builds, 102 files, no `.venv`/`.sqlite`/`.env` |
+| `tests/test_server_smoke.py` | Streamlit and the Flask evidence server both answer over real HTTP |
+| GitHub Actions | green on the lane's latest commits |
+
+## The front door (same day, after the freeze)
+
+The app was sound but unfriendly: a venv, two terminals, a seeder, a port and a URL before a
+non-technical person saw anything. That is fixed, not documented around:
+
+- **`python start.py`** — stages the demo if needed, starts both servers, waits for them, opens the
+  browser, and prints what the page does. Ctrl-C stops both. `--dry-run` prints the plan,
+  `--no-browser` / `--port` / `--reseed` cover the edge cases, and a busy port exits with the exact
+  command that fixes it. Seven tests hold it to that promise, including that it explains the purpose
+  before doing anything.
+- **The dashboard now says what it is** — a plain-language panel above the controls: what the app
+  decides, that green ALLOWED ran the action and red BLOCKED means nothing happened, which section
+  to press first, and that sections 4–5 are evidence rather than usage.
+- **README opens with the purpose and the one command**; the two-terminal version is labelled
+  advanced. The old quickstart assumed a venv and no seed, which is why a fresh clone met a blank
+  panel and an empty workflow section.
+
+## What the last pass fixed
+
+- **The export was destroying the audit chain.** 64-hex `prev_hash`/`entry_hash` matched the 32+ hex
+  redaction rule, so packs shipped with `[REDACTED]` where the tamper-evidence belonged.
+  `INTEGRITY_COLUMNS` exempts the three hash columns; a test requires both the surviving links and a
+  still-redacted planted token.
+- **README claimed the canary scanned outgoing proposals.** It does not appear in any call site.
+  The claim is corrected, with the wiring decision and its three possible outcomes named.
+- **Three count lines had drifted** (`docs/RUN.md`, `docs/SUBMISSION.md`, `team/README.md`) and now
+  match the measured 343/1-skip.
+
+## Ready to merge
+
+- Lane `lane/makhdum` is **0 commits behind `main`**; every merge from `main` is already in.
+- Last tested code state: `e961eaa` plus merges of `main`; commits after it are documentation only.
+- Merge on `main` with:
+  `git merge --no-ff origin/lane/makhdum && python -m pytest && gh workflow run evidence || git push origin main`
+  then confirm the `evidence` workflow passes on `main`.
+- Nothing is left half-done: no TODO, no failing test, no open finding, no untested deliverable.

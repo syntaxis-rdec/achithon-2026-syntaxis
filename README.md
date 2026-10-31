@@ -3,7 +3,7 @@
 > **The Zero-Authority Policy Gateway for Autonomous AI Agents.**  
 > Decides, verifies, and audits **before** an AI-proposed tool action can execute.
 
-[![Tests](https://img.shields.io/badge/pytest-262%20passed%2C%201%20xfailed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/pytest-350%20passed-brightgreen.svg)]()
 [![Benchmark](https://img.shields.io/badge/benchmark-32%2F32%20matched-blue.svg)]()
 [![Mutations](https://img.shields.io/badge/mutations-6%2F6%20detected-success.svg)]()
 [![Rehearsal](https://img.shields.io/badge/rehearsal-12%2F12%20green%20(4.3s)-purple.svg)]()
@@ -11,14 +11,40 @@
 
 ---
 
+## Start here (one command)
+
+```bash
+python start.py
+```
+
+That is the whole setup: it stages the demo, starts the two local servers, opens your browser, and
+says what you are looking at. Press **Ctrl-C** to stop.
+
+**What the app is for:** an AI assistant asks to read a document, save a summary, or send a message.
+AGENTGATE decides whether that is allowed **before anything happens** — green **ALLOWED** runs it,
+red **BLOCKED** means nothing was opened, saved or sent, and every decision is written down with a
+plain-English reason.
+
+---
+
 ## 🧭 Reader Guide
 * **If you are a non-technical reader, judge, or executive:** Start with [Section 1: Non-Technical Overview](#1-non-technical-overview).
 * **If you are a security architect, developer, or technical evaluator:** Jump directly to [Section 2: Technical Deep-Dive](#2-technical-deep-dive).
-* **To run the live interactive dashboard:** See [Quickstart (30 Seconds)](#quickstart-30-seconds).
+* **To run the app:** `python start.py` (see [Start here](#start-here-one-command)); manual options are under [Quickstart](#quickstart-30-seconds).
 
 ---
 
 ## Quickstart (30 Seconds)
+
+### Option 0: One Command (recommended)
+
+```powershell
+.venv\Scripts\activate
+python start.py
+```
+
+Stages the demo, starts both servers below, opens the browser and explains the page. Ctrl-C stops
+everything. Options A and B are the manual ways to do the same thing.
 
 ### Option A: Launch Both Local Servers
 ```powershell
@@ -161,7 +187,7 @@ Experience the 4 fundamental security invariants with a single click in the Poli
 
 | Suite | Command | Coverage | Result |
 |---|---|---|---|
-| **Unit & Integration** | `pytest` | 262 tests across gateway, policy, labels, resumption, injection, audit chain, canary, web, text-blindness | **262 passed, 1 xfailed (LF-2)** |
+| **Unit & Integration** | `pytest` | 351 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web, packaging, launcher, text-blindness | **350 passed, 1 skipped, 0 failed** |
 | **Stage Rehearsal** | `python demo/rehearse.py` | 12 live demo beats headlessly driven via `AppTest` | **12/12 beats green in 4.3s** |
 | **Scenario Benchmark** | `python -m benchmark.runner` | 32 frozen specification scenarios | **32/32 matched, 0 unauthorized** |
 | **Mutation Testing** | `python -m benchmark.mutations` | 6 deliberate gateway corruptions (clearance, inheritance, allowlist, tamper, read history, audit) | **6/6 detected (100% sensitivity)** |
@@ -240,7 +266,7 @@ Everything you need to deliver the 3-minute stage pitch or evaluate the system i
 │   ├── standalone.html           # Standalone offline frontend demonstration
 │   └── README.md                 # Web architecture and endpoint guide
 │
-├── tests/                        # 262 Automated Pytest Tests
+├── tests/                        # 351 automated tests
 │   ├── test_audit_chain.py       # Merkle chain integrity & tamper verification tests
 │   ├── test_canary.py            # Honeytoken & paraphrase leak detection tests
 │   ├── test_demo_beats.py        # Streamlit AppTest verification of every demo beat

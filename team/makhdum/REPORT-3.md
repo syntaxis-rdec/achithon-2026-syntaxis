@@ -133,8 +133,12 @@ default one that later allowed it. Alongside it, the run asserts:
 204 passed, 1 xfailed in 65.95s (0:01:05)
 ```
 
-The single xfail is the pre-existing LF-2 red-team finding from Task 2 (a document minted after the
-policy pin is trusted on sight), kept `strict`. No existing test was edited, skipped or weakened;
+(Superseded later the same day: with the export tests and the structural text-blindness tests added,
+the same command reports `222 passed, 1 xfailed`. The figure above is the Task-3 run.)
+
+The single xfail was the pre-existing LF-2 red-team finding from Task 2 (a document minted after the
+policy pin). It is closed: the guard now pins the document set too, so the board is 22/22 and that
+row became a skipped test rather than a documented failure. No existing test was edited, skipped or weakened;
 `tests/test_demo_beats.py`, `agentgate/`, `app.py`, `benchmark/` and `docs/DEMO_SCRIPT.md` are untouched.
 
 Focused run:
@@ -188,6 +192,10 @@ Handling: the rehearsal asserts the *live* fingerprints (asserting the stale one
 documentation typo), and beat 0 in the table compares the script's promise against what the app renders
 and prints the mismatch on every run. It is reported, not hidden, and it cannot fail the rehearsal —
 which is the behaviour TASK-3 asked for when a promised string is missing.
+
+**Closed 2026-10-30.** `docs/DEMO_SCRIPT.md:26` now reads `b76a1526a887e3d2`, so the script and the
+app agree. The rehearsal's beat 0 flipped from `warn` to `yes` on the next run, which is the check doing
+its job in both directions. The capture in §5 above is kept unchanged as the record of the finding.
 
 No other promised string was missing. Every `Screen:` string in the script renders verbatim, including
 the longer ones the per-beat tests only match by prefix (`Refused: not a security officer. The attempt is

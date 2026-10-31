@@ -26,9 +26,16 @@ REDACTION_PATTERNS = [
     re.compile(r"ghp_[A-Za-z0-9]+"),
     re.compile(r"Bearer\s+[A-Za-z0-9._~+/=\-]+", re.IGNORECASE),
     re.compile(r"\b[0-9a-fA-F]{32,}\b"),
+    # A JWT pasted without its "Bearer " prefix, which is what lands in a justification field.
+    re.compile(r"\beyJ[A-Za-z0-9._\-]{20,}"),
 ]
 
 REPLACEMENT = "[REDACTED]"
+
+# Not user text: the rulebook hash and the Merkle link hashes. A 64-character hex chain value matches
+# the "32+ hex" token shape, so redacting these would void the tamper-evidence the pack exists to
+# carry. They are kept verbatim; everything a person typed is still scanned.
+INTEGRITY_COLUMNS = frozenset({"policy_hash", "prev_hash", "entry_hash"})
 
 
 class Redactor:
@@ -49,7 +56,7 @@ class Redactor:
     def redact_row(self, row: dict[str, Any]) -> dict[str, Any]:
         cleaned: dict[str, Any] = {}
         for k, v in row.items():
-            if isinstance(v, str):
+            if isinstance(v, str) and k not in INTEGRITY_COLUMNS:
                 cleaned[k] = self.redact_text(v)
             else:
                 cleaned[k] = v

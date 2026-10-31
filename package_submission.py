@@ -38,6 +38,7 @@ INCLUDED_FILES = [
     "pytest.ini",
     "README.md",
     "requirements.txt",
+    "start.py",
 ]
 
 # Prohibited paths/extensions

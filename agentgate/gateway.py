@@ -64,16 +64,19 @@ class Session:
     def _deny_drift(self, bound: ActionRequest, drift: PolicyDrift,
                     workflow_id: str | None, step_index: int | None):
         """Deny and audit a mid-session rulebook swap. Nothing is evaluated and no tool runs."""
+        rule_id = "RULE-DOCUMENT-DRIFT" if drift.kind == "documents" else "RULE-POLICY-DRIFT"
+        subject = ("document set on disk" if drift.kind == "documents"
+                   else "rulebook on disk")
         decision = Decision(
-            allowed=False, rule_id="RULE-POLICY-DRIFT",
-            reason=(f"Blocked: the rulebook on disk no longer matches the one this session loaded "
+            allowed=False, rule_id=rule_id,
+            reason=(f"Blocked: the {subject} no longer matches the one this session loaded "
                     f"(pinned {drift.expected}, found {drift.found}). No action was evaluated and no "
                     "tool ran. A reload with the operator token is required to accept new rules."),
             label=None)
         self.state.record_audit(
             actor=bound.actor_id, origin=bound.origin, tool=bound.tool,
             resource=bound.resource_id or ",".join(bound.source_ids) or None,
-            recipient=bound.recipient, allowed=False, rule_id=decision.rule_id,
+            recipient=bound.recipient, allowed=False, rule_id=rule_id,
             reason=decision.reason, label=None, policy_hash=self.policies.fingerprint,
             workflow_id=workflow_id, step_index=step_index)
         return decision, None

@@ -7,23 +7,25 @@ asserts that promise: the repo's real rulebook hash is unchanged after the whole
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from agentgate.policy_guard import fingerprint
-from redteam.attacks import ATTACKS, LIVE_FINDINGS, POLICIES, PRINCIPALS, Arena
+from redteam.attacks import (ATTACKS, LIVE_FINDINGS, PINNED_ATTACKS, POLICIES, PRINCIPALS,
+                             Arena)
 
 RUNNERS = {attack.__name__: attack for attack in ATTACKS}
 RULEBOOK_AT_IMPORT = fingerprint(PRINCIPALS, POLICIES)
 
 
-@pytest.fixture()
-def arena(tmp_path):
-    return Arena(tmp_path / "arena")
+def _arena(tmp_path, name: str) -> Arena:
+    return Arena(tmp_path / "arena", pin_documents=name in PINNED_ATTACKS)
 
 
 @pytest.mark.parametrize("name", [n for n in RUNNERS if n not in LIVE_FINDINGS])
-def test_attack_is_refused_or_ends_safe(arena, name):
-    result = RUNNERS[name](arena)
+def test_attack_is_refused_or_ends_safe(tmp_path, name):
+    result = RUNNERS[name](_arena(tmp_path, name))
     assert result.safe, f"{name}: {result.detail}"
 
 
@@ -32,9 +34,19 @@ def test_attack_is_refused_or_ends_safe(arena, name):
                    reason="Live finding in team/makhdum/REPORT-2.md, kept rather than softened. "
                           "Delete the marker for an attack that starts passing, and say so in the "
                           "report.")
-def test_live_finding_is_still_open(arena, name):
-    result = RUNNERS[name](arena)
+def test_live_finding_is_still_open(tmp_path, name):
+    result = RUNNERS[name](_arena(tmp_path, name))
     assert result.safe, f"{name}: {result.detail}"
+
+
+def test_the_board_is_clean_without_losing_the_mechanism():
+    """An empty list must be a fact about the code, not a deleted safety net."""
+    assert LIVE_FINDINGS == []
+    assert PINNED_ATTACKS <= set(RUNNERS)
+    closed = (Path(__file__).resolve().parent.parent / "team" / "makhdum" / "REPORT-2.md")
+    text = closed.read_text(encoding="utf-8")
+    for finding in ("LF-1", "LF-2"):
+        assert finding in text, f"{finding} must still be written up, closed or not"
 
 
 def test_the_harness_is_big_enough_and_every_attack_is_named():

@@ -251,3 +251,90 @@ def test_the_detector_names_a_decision_made_off_the_pin(tmp_path, rulebook):
 
     ghosts = unadopted_rows(store, guard)
     assert len(ghosts) == 1 and ghosts[0]["policy_hash"] == drifted.fingerprint
+
+
+def _pinned(tmp_path, rulebook):
+    """A guard over a copy of the rulebook plus the document set, in a scratch world."""
+    from agentgate.policy_guard import Guard
+    from agentgate.store import Store
+
+    principals, policies_file = rulebook
+    docs = tmp_path / "docs"
+    shutil.copytree(ROOT / "data" / "documents", docs)
+    store = Store(tmp_path / "pin.sqlite")
+    store.load_documents_from_dir(docs)
+    return store, Guard(principals, policies_file, token=TOKEN, documents_path=docs), docs
+
+
+def test_a_pinned_document_set_refuses_a_document_minted_after_the_pin(tmp_path, rulebook):
+    """The one thing per-document fingerprints cannot see: a file that was never registered."""
+    store, guard, docs = _pinned(tmp_path, rulebook)
+    policies = load_policy_set(*[guard.principals_path, guard.policies_path])
+
+    allowed, _ = Session(store, policies, "intern", "human", guard).submit(
+        ActionRequest(tool="read_document", resource_id="doc-002"))
+    assert allowed.allowed
+
+    (docs / "doc-999-forged.md").write_text(
+        "---\nid: doc-999\ntitle: Public Trivia\nclassification: PUBLIC\nowner: attacker\n---\n"
+        "Nothing sensitive here.\n", encoding="utf-8")
+    store.load_documents_from_dir(docs)
+    assert store.get_document("doc-999").classification == "PUBLIC", "the store trusts it on sight"
+
+    decision, result = Session(store, policies, "intern", "human", guard).submit(
+        ActionRequest(tool="read_document", resource_id="doc-999"))
+    assert not decision.allowed and result is None
+    assert decision.rule_id == "RULE-DOCUMENT-DRIFT"
+    assert "document set" in decision.reason
+    assert store.list_audit()[0]["rule_id"] == "RULE-DOCUMENT-DRIFT"
+
+
+def test_an_edit_to_a_registered_document_also_breaks_the_document_pin(tmp_path, rulebook):
+    store, guard, docs = _pinned(tmp_path, rulebook)
+    target = docs / "doc-004-support.md"
+    target.write_text(target.read_text(encoding="utf-8") + "\nappended\n", encoding="utf-8")
+    with pytest.raises(PolicyDrift) as caught:
+        guard.check()
+    assert caught.value.kind == "documents"
+
+
+def test_without_a_document_pin_a_minted_document_is_still_trusted(tmp_path, rulebook):
+    """Statement of the default, so nobody mistakes an opt-in control for unconditional safety."""
+    from agentgate.store import Store
+
+    principals, policies_file = rulebook
+    docs = tmp_path / "unpinned"
+    shutil.copytree(ROOT / "data" / "documents", docs)
+    store = Store(tmp_path / "unpinned.sqlite")
+    store.load_documents_from_dir(docs)
+    guard = Guard(principals, policies_file, token=TOKEN)  # documents_path not given
+    (docs / "doc-888.md").write_text(
+        "---\nid: doc-888\ntitle: Forged\nclassification: PUBLIC\nowner: attacker\n---\nx\n",
+        encoding="utf-8")
+    store.load_documents_from_dir(docs)
+
+    decision, result = Session(store, load_policy_set(principals, policies_file),
+                               "intern", "human", guard).submit(
+        ActionRequest(tool="read_document", resource_id="doc-888"))
+    assert decision.allowed, "the rulebook pin alone cannot see a new file — that is the limitation"
+    assert result is not None
+
+
+def test_adopting_a_rulebook_re_pins_the_document_set_too(tmp_path, rulebook):
+    """One token, both pins: an operator who reloads has accepted the new state of both."""
+    store, guard, docs = _pinned(tmp_path, rulebook)
+    before = guard.pinned_documents
+    (docs / "doc-777.md").write_text(
+        "---\nid: doc-777\ntitle: Added legitimately\nclassification: PUBLIC\nowner: ops\n---\nx\n",
+        encoding="utf-8")
+    with pytest.raises(PolicyDrift):
+        guard.check()
+
+    guard.reload(TOKEN)
+    assert guard.pinned_documents != before
+    guard.check()
+    store.load_documents_from_dir(docs)
+    decision, _ = Session(store, load_policy_set(guard.principals_path, guard.policies_path),
+                          "intern", "human", guard).submit(
+        ActionRequest(tool="read_document", resource_id="doc-777"))
+    assert decision.allowed
