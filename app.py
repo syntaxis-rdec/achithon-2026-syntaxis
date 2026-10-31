@@ -977,3 +977,107 @@ elif page == "Activity & checks":
     table(get_activity())
 
 
+# -------------------- TERMINAL --------------------
+
+elif page == "Command center":
+    hero(
+        "A terminal feel. A controlled interface.",
+        "Read-only commands for summaries, diagnostics, "
+        "and recent activity. No shell, Python, or SQL execution.",
+    )
+
+    st.caption(
+        "Available commands: help · summary · checks · activity · clear"
+    )
+
+    if "terminal_history" not in st.session_state:
+        st.session_state["terminal_history"] = [
+            "ReconFlow Command Center",
+            "Read-only mode. Type help to begin.",
+        ]
+
+    with st.form("command_form", clear_on_submit=True):
+        command = st.text_input(
+            "reconflow >",
+            placeholder="summary",
+        )
+        submitted = st.form_submit_button("Run command")
+
+    if submitted:
+        normalized = command.strip().lower()
+
+        if normalized == "clear":
+            st.session_state["terminal_history"] = [
+                "History cleared."
+            ]
+        else:
+            if normalized == "help":
+                output = (
+                    "help      Show commands\n"
+                    "summary   Show financial totals\n"
+                    "checks    Run read-only integrity diagnostics\n"
+                    "activity  Show latest 10 activity events\n"
+                    "clear     Clear this session's terminal history"
+                )
+
+            elif normalized == "summary":
+                output = json.dumps(
+                    {
+                        "invoice_count": len(invoices),
+                        "payment_count": len(payments),
+                        "invoiced": float(
+                            total(invoices, "Original Amount")
+                        ),
+                        "outstanding": float(
+                            total(invoices, "Remaining Balance")
+                        ),
+                        "unallocated_payments": float(
+                            total(payments, "Unallocated Amount")
+                        ),
+                        "currency": "INR",
+                    },
+                    indent=2,
+                )
+
+            elif normalized == "checks":
+                issues = run_integrity_checks()
+                output = (
+                    "\n".join(issues)
+                    if issues
+                    else "PASS: No issues found by the implemented checks."
+                )
+
+            elif normalized == "activity":
+                events = get_activity(10)
+                output = (
+                    events.to_string(index=False)
+                    if not events.empty
+                    else "No activity recorded yet."
+                )
+
+            else:
+                output = (
+                    "Unknown command. Type help. "
+                    "Arbitrary commands are not supported."
+                )
+
+            st.session_state["terminal_history"].extend(
+                [f"> {command}", output, ""]
+            )
+
+            # Keep session memory bounded.
+            st.session_state["terminal_history"] = (
+                st.session_state["terminal_history"][-120:]
+            )
+
+    st.code(
+        "\n".join(st.session_state["terminal_history"]),
+        language="text",
+    )
+
+
+st.html("""
+    <div class="footer">
+        ReconFlow · Explainable reconciliation, human-controlled decisions
+    </div>
+""")
