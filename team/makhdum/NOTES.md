@@ -339,7 +339,7 @@ under Honest Limitations, both remain fully tested libraries, and neither is cla
 
 | Check | Result |
 |---|---|
-| `pytest` | **343 passed, 1 skipped, 0 failed** (344 collected; the skip is the live-findings parametrization with an empty list) |
+| `pytest` | **349 passed, 1 skipped, 0 failed** (350 collected; the skip is the live-findings parametrization with an empty list) |
 | `python -m benchmark.runner` | **32/32** matched, 0 unauthorized, 0 false allow/deny, 32/32 audit rows |
 | `python -m benchmark.mutations` | **6/6** breakages detected |
 | `python -m redteam` | **22/22** attacks held, **0 open findings** |
@@ -348,6 +348,23 @@ under Honest Limitations, both remain fully tested libraries, and neither is cla
 | `python package_submission.py` | archive builds, 102 files, no `.venv`/`.sqlite`/`.env` |
 | `tests/test_server_smoke.py` | Streamlit and the Flask evidence server both answer over real HTTP |
 | GitHub Actions | green on the lane's latest commits |
+
+## The front door (same day, after the freeze)
+
+The app was sound but unfriendly: a venv, two terminals, a seeder, a port and a URL before a
+non-technical person saw anything. That is fixed, not documented around:
+
+- **`python start.py`** — stages the demo if needed, starts both servers, waits for them, opens the
+  browser, and prints what the page does. Ctrl-C stops both. `--dry-run` prints the plan,
+  `--no-browser` / `--port` / `--reseed` cover the edge cases, and a busy port exits with the exact
+  command that fixes it. Six tests hold it to that promise, including that it explains the purpose
+  before doing anything.
+- **The dashboard now says what it is** — a plain-language panel above the controls: what the app
+  decides, that green ALLOWED ran the action and red BLOCKED means nothing happened, which section
+  to press first, and that sections 4–5 are evidence rather than usage.
+- **README opens with the purpose and the one command**; the two-terminal version is labelled
+  advanced. The old quickstart assumed a venv and no seed, which is why a fresh clone met a blank
+  panel and an empty workflow section.
 
 ## What the last pass fixed
 

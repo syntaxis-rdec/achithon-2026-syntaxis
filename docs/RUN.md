@@ -1,5 +1,16 @@
 # Running AGENTGATE
 
+## The easy path
+
+```bash
+python start.py
+```
+
+Stages the demo, starts both servers, opens the browser, and explains the page. Ctrl-C stops it.
+Everything below is the manual version of the same thing.
+
+## Manual path
+
 Windows PowerShell:
 
 ```powershell
@@ -96,7 +107,7 @@ Dashboard section 4 shows the benchmark and red team attack board live.
 
 | Claim | Command |
 |---|---|
-| the suite is green | `pytest` — 344 tests, 343 pass, 1 skipped, 0 failures |
+| the suite is green | `pytest` — 350 tests, 349 pass, 1 skipped, 0 failures |
 | the frozen table is matched | `python -m benchmark.runner` — 32/32 |
 | the table would notice a break | `python -m benchmark.mutations` — 6/6 detected |
 | the attacks are refused | `python -m redteam` — 22 of 22 held, none open |

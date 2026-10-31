@@ -3,36 +3,53 @@
 > **The Zero-Authority Policy Gateway for Autonomous AI Agents.**  
 > Decides, verifies, and audits **before** an AI-proposed tool action can execute.
 
-[![Tests](https://img.shields.io/badge/pytest-246%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/pytest-349%20passed-brightgreen.svg)]()
 [![Benchmark](https://img.shields.io/badge/benchmark-32%2F32%20matched-blue.svg)]()
 [![Mutations](https://img.shields.io/badge/mutations-6%2F6%20detected-success.svg)]()
-[![Rehearsal](https://img.shields.io/badge/rehearsal-12%2F12%20green%20(4.1s)-purple.svg)]()
+[![Rehearsal](https://img.shields.io/badge/rehearsal-12%2F12%20green-purple.svg)]()
 [![Python](https://img.shields.io/badge/python-3.11-informational.svg)]()
+
+---
+
+## Start here (one command)
+
+```bash
+python start.py
+```
+
+That is the whole setup: it stages the demo, starts the two local servers, opens your browser, and
+says what you are looking at. Press **Ctrl-C** to stop. Nothing to install beyond `pip install -r
+requirements.txt`, no account, no network.
+
+**What the app is for:** an AI assistant asks to read a document, save a summary, or send a message.
+AGENTGATE decides whether that is allowed **before anything happens** — green **ALLOWED** runs it,
+red **BLOCKED** means nothing was opened, saved or sent, and every decision is written down with a
+plain-English reason. [Section 1](#1-non-technical-overview) explains it without jargon.
 
 ---
 
 ## 🧭 Reader Guide
 * **If you are a non-technical reader or executive:** Start with [Section 1: Non-Technical Overview](#1-non-technical-overview).
 * **If you are a security architect, developer, or technical evaluator:** Jump directly to [Section 2: Technical Deep-Dive](#2-technical-deep-dive).
-* **To run the live interactive dashboard:** See [Quickstart (30 Seconds)](#quickstart-30-seconds).
+* **To run the app:** `python start.py` — see [Start here](#start-here-one-command). The two-terminal version is under [Quickstart](#quickstart-advanced-two-terminals).
 
 ---
 
-## Quickstart (30 Seconds)
+## Quickstart (advanced: two terminals)
+
+`python start.py` is the supported path. If you want the pieces separately — the stage demo shows
+both windows — they are three commands, in this order:
 
 ```powershell
-# 1. Activate the environment
 .venv\Scripts\activate
-
-# 2. Launch the interactive dashboard
-streamlit run app.py
+python demo/seed.py      # one report and two queued workflows, so the demo has something to click
+python web/app.py        # terminal 1: evidence server on :5000, the panel the dashboard embeds
+streamlit run app.py     # terminal 2: the dashboard on :8501
 ```
-Open `http://localhost:8501` to test live actions, view the red-team board, and inspect the cryptographic audit chain.
 
-To run the automated headless rehearsal of all 12 stage demo beats:
-```powershell
-python demo/rehearse.py
-```
+Reset state by re-running `demo/seed.py` (stop the server first on Windows). Every switch and every
+manual step: [`docs/RUN.md`](docs/RUN.md). Headless rehearsal of all 12 stage beats:
+`python demo/rehearse.py`.
 
 ---
 
@@ -144,7 +161,7 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
 
 | Suite | Command | Coverage | Result |
 |---|---|---|---|
-| **Unit & Integration** | `pytest` | 344 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web, packaging, text-blindness | **343 passed, 1 skipped, 0 failed** |
+| **Unit & Integration** | `pytest` | 350 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web, packaging, text-blindness | **349 passed, 1 skipped, 0 failed** |
 | **Stage Rehearsal** | `python demo/rehearse.py` | 12 live demo beats headlessly driven via `AppTest` | **12/12 beats green in 5.0s** |
 >>>>>>> origin/main
 | **Scenario Benchmark** | `python -m benchmark.runner` | 32 frozen specification scenarios | **32/32 matched, 0 unauthorized** |

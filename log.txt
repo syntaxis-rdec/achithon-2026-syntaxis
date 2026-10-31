@@ -1445,3 +1445,35 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+
+## [2026-10-31T07:07:37+05:30] Made the app usable by a non-technical person: one command and a plain-language page
+
+User Prompt (verbatim, secrets redacted):
+"the most hectic and mind bending thing is a common non-tech person can't easily use the app ,make it user
+friendly no complexions no too much steps , what i mean is whatever the motto of our app is it should't be
+too complicated to be used by even non-tech user's and they can know the purpose of app"
+
+Agent Response Summary:
+Replaced the five-step, two-terminal setup with one command. start.py stages the demo when needed, starts
+the evidence server and the dashboard, waits for both, opens the browser, prints what the page does and
+exits with the exact fix when a port is busy; dry-run prints the plan first. The dashboard now opens with a
+plain-language panel above the controls explaining what the app decides, that green ALLOWED ran the action
+and red BLOCKED means nothing happened, which section to press first and that sections 4-5 are evidence
+rather than usage. The README opens with the purpose and the one command, with the manual path labelled
+advanced; the old quickstart assumed a venv and skipped the seeder, which is why a fresh clone met a blank
+panel. Added six launcher tests including the busy-port message and the custom-evidence-port warning, then
+aligned every published count to 350 collected / 349 passed / 1 skipped and re-ran the rehearsal.
+
+Actions:
+* Created start.py and tests/test_start.py
+* Edited app.py (purpose panel), README.md, docs/RUN.md, docs/SUBMISSION.md, team/README.md, .github/workflows/ci.yml, team/makhdum/NOTES.md
+* Ran start.py --dry-run, launched it for real against a scratch world (dashboard 200, evidence 200), stopped both
+* Ran pytest (349 passed, 1 skipped), demo/rehearse.py (12/12, exit 0), py_compile on edited files
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none
