@@ -3,7 +3,7 @@
 > **The Zero-Authority Policy Gateway for Autonomous AI Agents.**  
 > Decides, verifies, and audits **before** an AI-proposed tool action can execute.
 
-[![Tests](https://img.shields.io/badge/pytest-349%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/pytest-350%20passed-brightgreen.svg)]()
 [![Benchmark](https://img.shields.io/badge/benchmark-32%2F32%20matched-blue.svg)]()
 [![Mutations](https://img.shields.io/badge/mutations-6%2F6%20detected-success.svg)]()
 [![Rehearsal](https://img.shields.io/badge/rehearsal-12%2F12%20green-purple.svg)]()
@@ -161,7 +161,7 @@ AGENTGATE acts like **Airport Security / Border Control** for AI agents.
 
 | Suite | Command | Coverage | Result |
 |---|---|---|---|
-| **Unit & Integration** | `pytest` | 350 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web, packaging, text-blindness | **349 passed, 1 skipped, 0 failed** |
+| **Unit & Integration** | `pytest` | 351 tests across gateway, policy, labels, resumption, injection, audit chain, canary, export, web, packaging, text-blindness | **350 passed, 1 skipped, 0 failed** |
 | **Stage Rehearsal** | `python demo/rehearse.py` | 12 live demo beats headlessly driven via `AppTest` | **12/12 beats green in 5.0s** |
 >>>>>>> origin/main
 | **Scenario Benchmark** | `python -m benchmark.runner` | 32 frozen specification scenarios | **32/32 matched, 0 unauthorized** |

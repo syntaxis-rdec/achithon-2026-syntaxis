@@ -1477,3 +1477,31 @@ branch=lane/makhdum
 repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
 worktree=repo
 parent_agent=none
+
+## [2026-10-31T07:09:59+05:30] The submission archive now carries the one-command launcher
+
+User Prompt (verbatim, secrets redacted):
+"the most hectic and mind bending thing is a common non-tech person can't easily use the app ,make it user
+friendly no complexions no too many steps , what i mean is whatever the motto of our app is it should't be
+too complicated to be used by even non-tech user's and they can know the purpose of app"
+
+Agent Response Summary:
+Checked the artefact a non-technical reader actually receives and found the launcher missing from it:
+package_submission.py ships a fixed list of root files and start.py was not on it, so the front door would
+have been absent from the zip. Added it, extended the packaging tests to require start.py and to require
+the shipped README to lead with the one command, rebuilt the archive at 104 files, and aligned every
+published count to 351 collected / 350 passed / 1 skipped. Suite green, rehearsal green, CI pending on the
+push.
+
+Actions:
+* Edited package_submission.py (start.py in INCLUDED_FILES) and tests/test_packaging.py (archive contents, shipped README)
+* Rebuilt agentgate-PS08-submission.zip (104 files, start.py present); deleted the artifact again so it stays untracked
+* Ran pytest (350 passed, 1 skipped) and updated README, docs/RUN.md, docs/SUBMISSION.md, team/README.md, CI step name, NOTES.md
+
+Context:
+tool=Qoder Desktop
+problem_id=PS08
+branch=lane/makhdum
+repo_root=C:\Users\shaki\Documents\Qoder\2026-10-30\dc72b447\repo
+worktree=repo
+parent_agent=none

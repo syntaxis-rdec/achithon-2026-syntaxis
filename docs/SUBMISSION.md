@@ -18,7 +18,7 @@ necessary to run, verify, and inspect the gateway:
 - `demo/` — stage seed script, policy swap utility, automated rehearsal engine (`rehearse.py`)
 - `data/` — documents, policies, evaluation injection documents
 - `docs/` — `RUN.md`, `DEMO_SCRIPT.md`, `DEMO_RUNSHEET.md`, `JUDGE_QA.md`, `PROPOSER.md`, `SUBMISSION.md`
-- `tests/` — complete test suite (349 passing, 1 skipped, 0 failures)
+- `tests/` — complete test suite (350 passing, 1 skipped, 0 failures)
 - `requirements.txt`, `pytest.ini`, `README.md`, `AGENTS.md`, `log.txt`
 - `agent-trace/PS08/<harness>/` — raw, redacted agent transcripts for auditability
 
@@ -62,7 +62,7 @@ Run all four verification commands before archiving:
    ```powershell
    .venv\Scripts\python.exe -m pytest
    ```
-   *Expected: 349 passed, 1 skipped, 0 failed.*
+   *Expected: 350 passed, 1 skipped, 0 failed.*
 
 2. **Automated Stage Demo Rehearsal:**
    ```powershell

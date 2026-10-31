@@ -107,7 +107,7 @@ Dashboard section 4 shows the benchmark and red team attack board live.
 
 | Claim | Command |
 |---|---|
-| the suite is green | `pytest` — 350 tests, 349 pass, 1 skipped, 0 failures |
+| the suite is green | `pytest` — 351 tests, 350 pass, 1 skipped, 0 failures |
 | the frozen table is matched | `python -m benchmark.runner` — 32/32 |
 | the table would notice a break | `python -m benchmark.mutations` — 6/6 detected |
 | the attacks are refused | `python -m redteam` — 22 of 22 held, none open |

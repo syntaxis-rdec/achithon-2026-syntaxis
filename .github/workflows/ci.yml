@@ -21,7 +21,7 @@ jobs:
       - name: Install
         run: pip install -r requirements.txt
 
-      - name: Tests (349 pass expected, 1 skipped, 0 failures)
+      - name: Tests (350 pass expected, 1 skipped, 0 failures)
         run: python -m pytest
 
       - name: Frozen scenarios (32/32 expected)

@@ -53,7 +53,8 @@ def test_the_archive_builds_and_carries_the_evidence_files(tmp_path, monkeypatch
 
     with zipfile.ZipFile(target) as archive:
         names = archive.namelist()
-        for required in ("agentgate/policy.py", "agentgate/export.py", "app.py", "docs/RUN.md",
+        for required in ("start.py", "agentgate/policy.py", "agentgate/export.py", "app.py",
+                         "docs/RUN.md",
                          "docs/SUBMISSION.md", "web/app.py", "demo/rehearse.py",
                          "redteam/attacks.py", "benchmark/scenarios.json",
                          "benchmark/results.json", "requirements.txt"):
@@ -71,3 +72,14 @@ def test_the_generated_archive_cannot_be_committed():
     check = subprocess.run(["git", "check-ignore", "-q", str(ROOT / "agentgate-PS08-submission.zip")],
                            cwd=str(ROOT), capture_output=True)
     assert check.returncode == 0, "the built archive must be git-ignored"
+
+
+def test_the_one_command_launcher_is_shipped(tmp_path, monkeypatch):
+    """The archive is what a non-technical reader receives; without start.py the front door is gone."""
+    target = tmp_path / "submission.zip"
+    monkeypatch.setattr(packager, "OUTPUT_ZIP", target)
+    assert packager.main() == 0
+    with zipfile.ZipFile(target) as archive:
+        assert "start.py" in archive.namelist()
+        readme = archive.read("README.md").decode("utf-8", errors="replace")
+    assert "python start.py" in readme, "the shipped README must lead with the one command"
