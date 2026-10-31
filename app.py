@@ -314,3 +314,194 @@ def report_bundle(invoices, payments):
 
     return output.getvalue()
 
+
+# -------------------- NAVIGATION --------------------
+
+with st.sidebar:
+    st.html("""
+        <div class="brand">◈ Recon<span>Flow</span></div>
+        <div class="brand-sub">FINANCIAL INTELLIGENCE</div>
+    """)
+
+    page = st.radio(
+        "Navigation",
+        [
+            "Overview",
+            "Upload studio",
+            "Matching engine",
+            "Review queue",
+            "Allocate payment",
+            "Customer explorer",
+            "Reports",
+            "Activity & checks",
+            "Command center",
+        ],
+        label_visibility="collapsed",
+    )
+
+    st.divider()
+
+    st.html("""
+        <div class="sidebar-note">
+            <b>Review-first reconciliation</b><br>
+            Suggestions assist your decision.<br>
+            Allocations change balances.<br>
+            Activity records future changes.
+        </div>
+    """)
+
+    st.caption("SQLite storage · INR")
+
+
+if "flash" in st.session_state:
+    st.success(st.session_state.pop("flash"))
+
+
+# Load current report data on each rerun.
+# Do not cache financial balances without an invalidation strategy.
+try:
+    invoices = pd.DataFrame(db.get_invoice_balances())
+    payments = pd.DataFrame(db.get_payment_report())
+except Exception as exc:
+    st.error(f"Could not load financial data: {exc}")
+    st.stop()
+
+
+# -------------------- OVERVIEW --------------------
+
+if page == "Overview":
+    hero(
+        "Make every payment make sense.",
+        "Reconciliation, customer exposure, and financial visibility "
+        "in one focused workspace.",
+    )
+
+    invoiced = total(invoices, "Original Amount")
+    allocated = total(invoices, "Amount Paid")
+    outstanding = total(invoices, "Remaining Balance")
+    available = total(payments, "Unallocated Amount")
+
+    cols = st.columns(4)
+
+    values = [
+        ("TOTAL INVOICED", money(invoiced),
+         f"{len(invoices):,} invoices"),
+        ("ALLOCATED TO INVOICES", money(allocated),
+         "Confirmed allocations"),
+        ("OUTSTANDING", money(outstanding),
+         "Remaining invoice balance"),
+        ("AVAILABLE PAYMENTS", money(available),
+         "Not yet allocated"),
+    ]
+
+    for col, values_for_card in zip(cols, values):
+        with col:
+            card(*values_for_card)
+
+    left, right = st.columns([1, 1.25])
+
+    with left:
+        with st.container(border=True):
+            st.subheader("Invoice reconciliation")
+
+            if invoiced > 0:
+                fig = go.Figure(
+                    go.Pie(
+                        labels=["Allocated", "Outstanding"],
+                        values=[allocated, outstanding],
+                        hole=0.76,
+                        marker=dict(
+                            colors=["#9A83FF", "#27324B"]
+                        ),
+                        textinfo="none",
+                        hovertemplate=(
+                            "%{label}<br>₹%{value:,.2f}<extra></extra>"
+                        ),
+                    )
+                )
+
+                fig.update_layout(
+                    height=310,
+                    annotations=[
+                        dict(
+                            text=f"{allocated / invoiced:.1%}",
+                            x=0.5,
+                            y=0.5,
+                            showarrow=False,
+                            font=dict(size=34, color="#F5F7FF"),
+                        )
+                    ],
+                )
+
+                chart(fig)
+            else:
+                st.info("Upload invoices to populate this chart.")
+
+    with right:
+        with st.container(border=True):
+            st.subheader("Largest customer balances")
+
+            if not invoices.empty:
+                exposure = (
+                    invoices.groupby("Customer", as_index=False)
+                    ["Remaining Balance"].sum()
+                )
+                exposure = exposure[
+                    exposure["Remaining Balance"] > 0
+                ].nlargest(7, "Remaining Balance")
+
+                if not exposure.empty:
+                    chart(
+                        px.bar(
+                            exposure,
+                            x="Remaining Balance",
+                            y="Customer",
+                            orientation="h",
+                            color_discrete_sequence=["#9A83FF"],
+                        )
+                    )
+                else:
+                    st.success("All invoice balances are cleared.")
+            else:
+                st.info("Customer exposure appears after upload.")
+
+    with st.container(border=True):
+        st.subheader("Outstanding invoice age")
+        st.caption(
+            "Age is measured from invoice date, not payment due date. "
+            "Unknown and future-dated invoices remain separate."
+        )
+
+        aged = get_invoice_age_report()
+
+        if not aged.empty:
+            aged = aged[aged["Remaining Balance"] > 0]
+
+            if not aged.empty:
+                summary = aged.groupby(
+                    "Age band", as_index=False
+                )["Remaining Balance"].sum()
+
+                chart(
+                    px.bar(
+                        summary,
+                        x="Age band",
+                        y="Remaining Balance",
+                        category_orders={
+                            "Age band": [
+                                "0–30 days",
+                                "31–60 days",
+                                "61–90 days",
+                                "91+ days",
+                                "Unknown date",
+                                "Future dated",
+                            ]
+                        },
+                        color_discrete_sequence=["#47D7C2"],
+                    )
+                )
+            else:
+                st.info("No outstanding invoices.")
+        else:
+            st.info("No invoice records yet.")
+
