@@ -618,3 +618,100 @@ elif page == "Matching engine":
         st.info("No matching suggestions yet.")
 
 
+# -------------------- REVIEWS --------------------
+
+elif page == "Review queue":
+    hero(
+        "Your judgment. Supported by evidence.",
+        "Inspect matching explanations and current balances "
+        "before approving a financial allocation.",
+    )
+
+    pending = db.get_pending_reviews()
+
+    minimum_score = st.slider(
+        "Minimum matching score",
+        min_value=0,
+        max_value=100,
+        value=0,
+    )
+
+    visible = [
+        item for item in pending
+        if float(item["score"]) >= minimum_score
+    ]
+
+    st.caption(
+        f"{len(visible):,} visible · {len(pending):,} pending. "
+        "Scores are matching-engine scores, not calibrated probabilities."
+    )
+
+    if not visible:
+        st.info("No pending suggestions match this filter.")
+
+    for item in visible:
+        with st.container(border=True):
+            st.subheader(
+                f"{item['invoice_id']} ↔ {item['payment_id']}"
+            )
+
+            st.write(item["explanation"])
+            st.caption(f"Matching score: {item['score']}/100")
+
+            maximum = min(
+                item["invoice_remaining"],
+                item["payment_remaining"],
+            )
+
+            left, right = st.columns(2)
+
+            left.metric(
+                "Invoice balance",
+                money(item["invoice_remaining"]),
+            )
+            right.metric(
+                "Payment available",
+                money(item["payment_remaining"]),
+            )
+
+            with st.form(f"review_{item['suggestion_id']}"):
+                amount = st.text_input(
+                    "Allocation amount (₹)",
+                    value=f"{max(maximum, 0):.2f}",
+                    disabled=maximum <= 0,
+                )
+
+                if maximum <= 0:
+                    st.warning(
+                        "No amount is available. "
+                        "You may still reject this suggestion."
+                    )
+
+                left, right = st.columns(2)
+
+                with left:
+                    approve = st.form_submit_button(
+                        "Approve allocation",
+                        type="primary",
+                        disabled=maximum <= 0,
+                        use_container_width=True,
+                    )
+
+                with right:
+                    reject = st.form_submit_button(
+                        "Reject suggestion",
+                        use_container_width=True,
+                    )
+
+                if approve or reject:
+                    try:
+                        result = review_match(
+                            item["suggestion_id"],
+                            "approve" if approve else "reject",
+                            amount if approve else None,
+                        )
+                        finish(result)
+                    except Exception as exc:
+                        st.error(str(exc))
+
+
