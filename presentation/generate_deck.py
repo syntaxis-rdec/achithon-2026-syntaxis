@@ -160,7 +160,7 @@ def build_deck():
     foot.line.color.rgb = RGBColor(40, 60, 100)
     ftf = foot.text_frame
     fp = ftf.paragraphs[0]
-    fp.text = "Team 9-11 (Syntaxis)  |  Python · SQLite · Pydantic · Streamlit  |  246 Tests Passing · 32/32 Benchmarks"
+    fp.text = "Team 9-11 (Syntaxis)  |  Python · SQLite · Pydantic · Streamlit  |  262 Tests Passing · 32/32 Benchmarks"
     fp.font.size = Pt(13)
     fp.font.bold = True
     fp.font.color.rgb = TEXT_WHITE
@@ -324,7 +324,7 @@ def build_deck():
 
     # 4 Metric Cards
     metrics = [
-        ("246 / 246", "Automated Pytest Suite", "100% passing across gateway, provenance lattice, resumption, and canary security."),
+        ("262 / 262", "Automated Pytest Suite", "100% passing across gateway, provenance lattice, resumption, and canary security."),
         ("32 / 32", "Frozen Benchmark", "0 unauthorized executions, 0 false allows, 0 false denies against frozen scenarios."),
         ("6 / 6", "Deliberate Mutations Caught", "Mutated the gateway 6 deliberate ways (bypass auth, leak label, ignore policy); ALL 6 caught."),
         ("21 / 22", "Red Team Attacks Held", "Prompt injections, role impersonations, title smuggling, replay attacks, forged steps."),
